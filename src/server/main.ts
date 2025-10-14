@@ -2,10 +2,15 @@ import sampleModuleRoutes from '@modules/sample-module/server/routes/sampleModul
 import express from "express";
 import fileUpload from "express-fileupload";
 import { rateLimit } from 'express-rate-limit';
+import path from "path";
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
+import { fileURLToPath } from 'url';
 import masterDataRoutes from '../modules/master-data/server/routes/masterDataRoutes';
 import ViteExpress from "vite-express";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import authRoutes from "./routes/auth/auth";
 import departmentRoutes from "./routes/demo/department";
 import moduleAuthorizationRoutes from "./routes/system/moduleAuthorization";
@@ -47,7 +52,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const swaggerOptions = {
-  swaggerDefinition: {
+  definition: {
     openapi: '3.0.0', // Specify OpenAPI version
     info: {
       title: 'React Admin API',
@@ -56,16 +61,16 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: 'http://localhost:3000', // Replace with your API base URL
+        url: 'http://localhost:5000', // Replace with your API base URL
         description: 'Development server',
       },
     ],
     // Add security schemes, components (schemas), etc. here if needed
   },
-  // Path to your route files where JSDoc comments are located
+  // Path to your route files where JSDoc comments are located - using absolute paths
   apis: [
-    './src/server/routes/*/*.ts',
-    './src/modules/*/server/routes/*.ts',
+    path.join(__dirname, './routes/**/*.ts'),
+    path.join(__dirname, '../modules/**/server/routes/*.ts'),
   ], 
 };
 
