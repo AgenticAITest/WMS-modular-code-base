@@ -12,6 +12,14 @@ A comprehensive admin dashboard built with React, TypeScript, Vite, and Drizzle 
 - ✅ Deployment configuration ready
 
 ## Recent Changes (October 14, 2025)
+- **Customer and Supplier CRUD APIs Implemented:**
+  - Created full CRUD APIs for suppliers and customers in master-data module
+  - Implemented nested location management (one supplier/customer → multiple locations)
+  - POST/PUT operations handle master record + locations in single request
+  - GET by ID returns supplier/customer with all locations included
+  - DELETE operations cascade to remove all related locations
+  - Added Swagger documentation for all 10 new endpoints
+  - Supports pagination, search, and tenant isolation
 - **Customer and Supplier Schema Implementation:**
   - Added 4 new database tables: suppliers, supplier_locations, customers, customer_locations
   - Implemented in master-data module following modular architecture pattern
@@ -120,7 +128,9 @@ Optional configuration:
 - `/api/modules/master-data/product-types` - Inventory types CRUD
 - `/api/modules/master-data/package-types` - Package types CRUD
 - `/api/modules/master-data/products` - Products CRUD
-- `/api-docs` - Swagger UI documentation (65 endpoints)
+- `/api/modules/master-data/suppliers` - Suppliers CRUD with nested locations
+- `/api/modules/master-data/customers` - Customers CRUD with nested locations
+- `/api-docs` - Swagger UI documentation (75 endpoints)
 
 ### Default Login Credentials
 After database seeding, you can login with:

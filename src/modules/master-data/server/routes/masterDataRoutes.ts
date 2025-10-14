@@ -1,6 +1,6 @@
 import express from 'express';
 import { db } from '@server/lib/db';
-import { productTypes, packageTypes, products } from '../lib/db/schemas/masterData';
+import { productTypes, packageTypes, products, suppliers, supplierLocations, customers, customerLocations } from '../lib/db/schemas/masterData';
 import { authenticated, authorized } from '@server/middleware/authMiddleware';
 import { eq, and, desc, count, ilike } from 'drizzle-orm';
 import { checkModuleAuthorization } from '@server/middleware/moduleAuthMiddleware';
@@ -1173,6 +1173,1014 @@ router.delete('/products/:id', authorized('ADMIN', 'master-data.delete'), async 
     });
   } catch (error) {
     console.error('Error deleting product:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+// ================================================================================
+// SUPPLIERS ROUTES
+// ================================================================================
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     SupplierLocation:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         supplierId:
+ *           type: string
+ *           format: uuid
+ *         locationType:
+ *           type: string
+ *           enum: [pickup, billing]
+ *         address:
+ *           type: string
+ *         city:
+ *           type: string
+ *         state:
+ *           type: string
+ *         postalCode:
+ *           type: string
+ *         country:
+ *           type: string
+ *         latitude:
+ *           type: number
+ *         longitude:
+ *           type: number
+ *         contactPerson:
+ *           type: string
+ *         phone:
+ *           type: string
+ *         email:
+ *           type: string
+ *         isActive:
+ *           type: boolean
+ *     Supplier:
+ *       type: object
+ *       required:
+ *         - name
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         tenantId:
+ *           type: string
+ *           format: uuid
+ *         name:
+ *           type: string
+ *         contactPerson:
+ *           type: string
+ *         email:
+ *           type: string
+ *         phone:
+ *           type: string
+ *         taxId:
+ *           type: string
+ *         locations:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/SupplierLocation'
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ */
+
+/**
+ * @swagger
+ * /api/modules/master-data/suppliers:
+ *   get:
+ *     summary: Get all suppliers
+ *     tags: [Master Data - Suppliers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of suppliers
+ */
+router.get('/suppliers', authorized('ADMIN', 'master-data.view'), async (req, res) => {
+  try {
+    const tenantId = req.user!.activeTenantId;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = req.query.search as string;
+    const offset = (page - 1) * limit;
+
+    const whereConditions = [eq(suppliers.tenantId, tenantId)];
+    
+    if (search) {
+      whereConditions.push(ilike(suppliers.name, `%${search}%`));
+    }
+
+    const [totalResult] = await db
+      .select({ count: count() })
+      .from(suppliers)
+      .where(and(...whereConditions));
+
+    const data = await db
+      .select()
+      .from(suppliers)
+      .where(and(...whereConditions))
+      .orderBy(desc(suppliers.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const totalPages = Math.ceil(totalResult.count / limit);
+
+    res.json({
+      success: true,
+      data,
+      pagination: {
+        page,
+        limit,
+        total: totalResult.count,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching suppliers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/modules/master-data/suppliers/{id}:
+ *   get:
+ *     summary: Get a supplier by ID with locations
+ *     tags: [Master Data - Suppliers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Supplier found
+ *       404:
+ *         description: Supplier not found
+ */
+router.get('/suppliers/:id', authorized('ADMIN', 'master-data.view'), async (req, res) => {
+  try {
+    const tenantId = req.user!.activeTenantId;
+    const { id } = req.params;
+
+    const [supplier] = await db
+      .select()
+      .from(suppliers)
+      .where(and(eq(suppliers.id, id), eq(suppliers.tenantId, tenantId)));
+
+    if (!supplier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Supplier not found',
+      });
+    }
+
+    const locations = await db
+      .select()
+      .from(supplierLocations)
+      .where(and(eq(supplierLocations.supplierId, id), eq(supplierLocations.tenantId, tenantId)));
+
+    res.json({
+      success: true,
+      data: {
+        ...supplier,
+        locations,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching supplier:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/modules/master-data/suppliers:
+ *   post:
+ *     summary: Create a new supplier with locations
+ *     tags: [Master Data - Suppliers]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *               contactPerson:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               taxId:
+ *                 type: string
+ *               locations:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     locationType:
+ *                       type: string
+ *                     address:
+ *                       type: string
+ *                     city:
+ *                       type: string
+ *                     state:
+ *                       type: string
+ *                     postalCode:
+ *                       type: string
+ *                     country:
+ *                       type: string
+ *                     latitude:
+ *                       type: number
+ *                     longitude:
+ *                       type: number
+ *                     contactPerson:
+ *                       type: string
+ *                     phone:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     isActive:
+ *                       type: boolean
+ *     responses:
+ *       201:
+ *         description: Supplier created successfully
+ */
+router.post('/suppliers', authorized('ADMIN', 'master-data.create'), async (req, res) => {
+  try {
+    const tenantId = req.user!.activeTenantId;
+    const { name, contactPerson, email, phone, taxId, locations = [] } = req.body;
+
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name is required',
+      });
+    }
+
+    const supplierId = crypto.randomUUID();
+
+    const [newSupplier] = await db
+      .insert(suppliers)
+      .values({
+        id: supplierId,
+        tenantId,
+        name,
+        contactPerson,
+        email,
+        phone,
+        taxId,
+      })
+      .returning();
+
+    const newLocations = [];
+    if (locations.length > 0) {
+      const locationValues = locations.map((loc: any) => ({
+        id: crypto.randomUUID(),
+        supplierId,
+        tenantId,
+        locationType: loc.locationType || 'pickup',
+        address: loc.address,
+        city: loc.city,
+        state: loc.state,
+        postalCode: loc.postalCode,
+        country: loc.country,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        contactPerson: loc.contactPerson,
+        phone: loc.phone,
+        email: loc.email,
+        isActive: loc.isActive ?? true,
+      }));
+
+      const insertedLocations = await db
+        .insert(supplierLocations)
+        .values(locationValues)
+        .returning();
+      
+      newLocations.push(...insertedLocations);
+    }
+
+    res.status(201).json({
+      success: true,
+      data: {
+        ...newSupplier,
+        locations: newLocations,
+      },
+      message: 'Supplier created successfully',
+    });
+  } catch (error) {
+    console.error('Error creating supplier:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/modules/master-data/suppliers/{id}:
+ *   put:
+ *     summary: Update a supplier with locations
+ *     tags: [Master Data - Suppliers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               contactPerson:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               taxId:
+ *                 type: string
+ *               locations:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *     responses:
+ *       200:
+ *         description: Supplier updated successfully
+ */
+router.put('/suppliers/:id', authorized('ADMIN', 'master-data.edit'), async (req, res) => {
+  try {
+    const tenantId = req.user!.activeTenantId;
+    const { id } = req.params;
+    const { name, contactPerson, email, phone, taxId, locations = [] } = req.body;
+
+    const [updated] = await db
+      .update(suppliers)
+      .set({ name, contactPerson, email, phone, taxId })
+      .where(and(eq(suppliers.id, id), eq(suppliers.tenantId, tenantId)))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: 'Supplier not found',
+      });
+    }
+
+    await db
+      .delete(supplierLocations)
+      .where(and(eq(supplierLocations.supplierId, id), eq(supplierLocations.tenantId, tenantId)));
+
+    const newLocations = [];
+    if (locations.length > 0) {
+      const locationValues = locations.map((loc: any) => ({
+        id: loc.id || crypto.randomUUID(),
+        supplierId: id,
+        tenantId,
+        locationType: loc.locationType || 'pickup',
+        address: loc.address,
+        city: loc.city,
+        state: loc.state,
+        postalCode: loc.postalCode,
+        country: loc.country,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        contactPerson: loc.contactPerson,
+        phone: loc.phone,
+        email: loc.email,
+        isActive: loc.isActive ?? true,
+      }));
+
+      const insertedLocations = await db
+        .insert(supplierLocations)
+        .values(locationValues)
+        .returning();
+      
+      newLocations.push(...insertedLocations);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        ...updated,
+        locations: newLocations,
+      },
+      message: 'Supplier updated successfully',
+    });
+  } catch (error) {
+    console.error('Error updating supplier:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/modules/master-data/suppliers/{id}:
+ *   delete:
+ *     summary: Delete a supplier and its locations
+ *     tags: [Master Data - Suppliers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Supplier deleted successfully
+ */
+router.delete('/suppliers/:id', authorized('ADMIN', 'master-data.delete'), async (req, res) => {
+  try {
+    const tenantId = req.user!.activeTenantId;
+    const { id } = req.params;
+
+    await db
+      .delete(supplierLocations)
+      .where(and(eq(supplierLocations.supplierId, id), eq(supplierLocations.tenantId, tenantId)));
+
+    const [deleted] = await db
+      .delete(suppliers)
+      .where(and(eq(suppliers.id, id), eq(suppliers.tenantId, tenantId)))
+      .returning();
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Supplier not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Supplier deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting supplier:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+// ================================================================================
+// CUSTOMERS ROUTES
+// ================================================================================
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     CustomerLocation:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         customerId:
+ *           type: string
+ *           format: uuid
+ *         locationType:
+ *           type: string
+ *           enum: [billing, shipping]
+ *         address:
+ *           type: string
+ *         city:
+ *           type: string
+ *         state:
+ *           type: string
+ *         postalCode:
+ *           type: string
+ *         country:
+ *           type: string
+ *         latitude:
+ *           type: number
+ *         longitude:
+ *           type: number
+ *         contactPerson:
+ *           type: string
+ *         phone:
+ *           type: string
+ *         email:
+ *           type: string
+ *         isActive:
+ *           type: boolean
+ *     Customer:
+ *       type: object
+ *       required:
+ *         - name
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         tenantId:
+ *           type: string
+ *           format: uuid
+ *         name:
+ *           type: string
+ *         contactPerson:
+ *           type: string
+ *         email:
+ *           type: string
+ *         phone:
+ *           type: string
+ *         taxId:
+ *           type: string
+ *         locations:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/CustomerLocation'
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ */
+
+/**
+ * @swagger
+ * /api/modules/master-data/customers:
+ *   get:
+ *     summary: Get all customers
+ *     tags: [Master Data - Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of customers
+ */
+router.get('/customers', authorized('ADMIN', 'master-data.view'), async (req, res) => {
+  try {
+    const tenantId = req.user!.activeTenantId;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = req.query.search as string;
+    const offset = (page - 1) * limit;
+
+    const whereConditions = [eq(customers.tenantId, tenantId)];
+    
+    if (search) {
+      whereConditions.push(ilike(customers.name, `%${search}%`));
+    }
+
+    const [totalResult] = await db
+      .select({ count: count() })
+      .from(customers)
+      .where(and(...whereConditions));
+
+    const data = await db
+      .select()
+      .from(customers)
+      .where(and(...whereConditions))
+      .orderBy(desc(customers.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const totalPages = Math.ceil(totalResult.count / limit);
+
+    res.json({
+      success: true,
+      data,
+      pagination: {
+        page,
+        limit,
+        total: totalResult.count,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching customers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/modules/master-data/customers/{id}:
+ *   get:
+ *     summary: Get a customer by ID with locations
+ *     tags: [Master Data - Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Customer found
+ *       404:
+ *         description: Customer not found
+ */
+router.get('/customers/:id', authorized('ADMIN', 'master-data.view'), async (req, res) => {
+  try {
+    const tenantId = req.user!.activeTenantId;
+    const { id } = req.params;
+
+    const [customer] = await db
+      .select()
+      .from(customers)
+      .where(and(eq(customers.id, id), eq(customers.tenantId, tenantId)));
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found',
+      });
+    }
+
+    const locations = await db
+      .select()
+      .from(customerLocations)
+      .where(and(eq(customerLocations.customerId, id), eq(customerLocations.tenantId, tenantId)));
+
+    res.json({
+      success: true,
+      data: {
+        ...customer,
+        locations,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching customer:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/modules/master-data/customers:
+ *   post:
+ *     summary: Create a new customer with locations
+ *     tags: [Master Data - Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *               contactPerson:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               taxId:
+ *                 type: string
+ *               locations:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     locationType:
+ *                       type: string
+ *                     address:
+ *                       type: string
+ *                     city:
+ *                       type: string
+ *                     state:
+ *                       type: string
+ *                     postalCode:
+ *                       type: string
+ *                     country:
+ *                       type: string
+ *                     latitude:
+ *                       type: number
+ *                     longitude:
+ *                       type: number
+ *                     contactPerson:
+ *                       type: string
+ *                     phone:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     isActive:
+ *                       type: boolean
+ *     responses:
+ *       201:
+ *         description: Customer created successfully
+ */
+router.post('/customers', authorized('ADMIN', 'master-data.create'), async (req, res) => {
+  try {
+    const tenantId = req.user!.activeTenantId;
+    const { name, contactPerson, email, phone, taxId, locations = [] } = req.body;
+
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name is required',
+      });
+    }
+
+    const customerId = crypto.randomUUID();
+
+    const [newCustomer] = await db
+      .insert(customers)
+      .values({
+        id: customerId,
+        tenantId,
+        name,
+        contactPerson,
+        email,
+        phone,
+        taxId,
+      })
+      .returning();
+
+    const newLocations = [];
+    if (locations.length > 0) {
+      const locationValues = locations.map((loc: any) => ({
+        id: crypto.randomUUID(),
+        customerId,
+        tenantId,
+        locationType: loc.locationType,
+        address: loc.address,
+        city: loc.city,
+        state: loc.state,
+        postalCode: loc.postalCode,
+        country: loc.country,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        contactPerson: loc.contactPerson,
+        phone: loc.phone,
+        email: loc.email,
+        isActive: loc.isActive ?? true,
+      }));
+
+      const insertedLocations = await db
+        .insert(customerLocations)
+        .values(locationValues)
+        .returning();
+      
+      newLocations.push(...insertedLocations);
+    }
+
+    res.status(201).json({
+      success: true,
+      data: {
+        ...newCustomer,
+        locations: newLocations,
+      },
+      message: 'Customer created successfully',
+    });
+  } catch (error) {
+    console.error('Error creating customer:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/modules/master-data/customers/{id}:
+ *   put:
+ *     summary: Update a customer with locations
+ *     tags: [Master Data - Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               contactPerson:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               taxId:
+ *                 type: string
+ *               locations:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *     responses:
+ *       200:
+ *         description: Customer updated successfully
+ */
+router.put('/customers/:id', authorized('ADMIN', 'master-data.edit'), async (req, res) => {
+  try {
+    const tenantId = req.user!.activeTenantId;
+    const { id } = req.params;
+    const { name, contactPerson, email, phone, taxId, locations = [] } = req.body;
+
+    const [updated] = await db
+      .update(customers)
+      .set({ name, contactPerson, email, phone, taxId })
+      .where(and(eq(customers.id, id), eq(customers.tenantId, tenantId)))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found',
+      });
+    }
+
+    await db
+      .delete(customerLocations)
+      .where(and(eq(customerLocations.customerId, id), eq(customerLocations.tenantId, tenantId)));
+
+    const newLocations = [];
+    if (locations.length > 0) {
+      const locationValues = locations.map((loc: any) => ({
+        id: loc.id || crypto.randomUUID(),
+        customerId: id,
+        tenantId,
+        locationType: loc.locationType,
+        address: loc.address,
+        city: loc.city,
+        state: loc.state,
+        postalCode: loc.postalCode,
+        country: loc.country,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        contactPerson: loc.contactPerson,
+        phone: loc.phone,
+        email: loc.email,
+        isActive: loc.isActive ?? true,
+      }));
+
+      const insertedLocations = await db
+        .insert(customerLocations)
+        .values(locationValues)
+        .returning();
+      
+      newLocations.push(...insertedLocations);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        ...updated,
+        locations: newLocations,
+      },
+      message: 'Customer updated successfully',
+    });
+  } catch (error) {
+    console.error('Error updating customer:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/modules/master-data/customers/{id}:
+ *   delete:
+ *     summary: Delete a customer and its locations
+ *     tags: [Master Data - Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Customer deleted successfully
+ */
+router.delete('/customers/:id', authorized('ADMIN', 'master-data.delete'), async (req, res) => {
+  try {
+    const tenantId = req.user!.activeTenantId;
+    const { id } = req.params;
+
+    await db
+      .delete(customerLocations)
+      .where(and(eq(customerLocations.customerId, id), eq(customerLocations.tenantId, tenantId)));
+
+    const [deleted] = await db
+      .delete(customers)
+      .where(and(eq(customers.id, id), eq(customers.tenantId, tenantId)))
+      .returning();
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Customer deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting customer:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',
