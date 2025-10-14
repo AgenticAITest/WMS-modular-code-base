@@ -363,7 +363,33 @@ const SupplierDialog = ({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Coordinates (long,lat)</Label>
+                        <Input
+                          placeholder="e.g., 103.8198,1.3521"
+                          value={
+                            watch(`locations.${index}.longitude`) && watch(`locations.${index}.latitude`)
+                              ? `${watch(`locations.${index}.longitude`)},${watch(`locations.${index}.latitude`)}`
+                              : ''
+                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            const parts = value.split(',').map(p => p.trim());
+                            if (parts.length === 2) {
+                              const long = parseFloat(parts[0]);
+                              const lat = parseFloat(parts[1]);
+                              setValue(`locations.${index}.longitude`, isNaN(long) ? undefined : long);
+                              setValue(`locations.${index}.latitude`, isNaN(lat) ? undefined : lat);
+                            } else if (value === '') {
+                              setValue(`locations.${index}.longitude`, undefined);
+                              setValue(`locations.${index}.latitude`, undefined);
+                            }
+                          }}
+                        />
+                        <p className="text-xs text-muted-foreground">Copy from Google Maps</p>
+                      </div>
+
                       <div className="space-y-2">
                         <Label>Phone</Label>
                         <Input
@@ -371,7 +397,9 @@ const SupplierDialog = ({
                           placeholder="Location phone"
                         />
                       </div>
+                    </div>
 
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Email</Label>
                         <Input
