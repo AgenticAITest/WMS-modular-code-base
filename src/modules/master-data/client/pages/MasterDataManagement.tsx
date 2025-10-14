@@ -4,6 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@client/components/ui/
 import InventoryTypeTab from '../components/InventoryTypeTab';
 import PackageTypeTab from '../components/PackageTypeTab';
 import ProductTab from '../components/ProductTab';
+import SupplierTab from '../components/SupplierTab';
+import CustomerTab from '../components/CustomerTab';
 import PlaceholderTab from '../components/PlaceholderTab';
 
 const MasterDataManagement = () => {
@@ -76,17 +78,11 @@ const MasterDataManagement = () => {
         </TabsContent>
 
         <TabsContent value="supplier" className="mt-6">
-          <PlaceholderTab 
-            title="Suppliers" 
-            description="Supplier management feature is under development"
-          />
+          <SupplierTab />
         </TabsContent>
 
         <TabsContent value="customer" className="mt-6">
-          <PlaceholderTab 
-            title="Customers" 
-            description="Customer management feature is under development"
-          />
+          <CustomerTab />
         </TabsContent>
 
         <TabsContent value="number" className="mt-6">
