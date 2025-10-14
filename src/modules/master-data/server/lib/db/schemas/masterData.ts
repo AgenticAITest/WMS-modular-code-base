@@ -67,6 +67,88 @@ export const products = pgTable('products', {
   ]
 );
 
+export const suppliers = pgTable('suppliers', {
+  id: uuid('id').primaryKey(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenant.id),
+  name: varchar('name', { length: 255 }).notNull(),
+  contactPerson: varchar('contact_person', { length: 255 }),
+  email: varchar('email', { length: 255 }),
+  phone: varchar('phone', { length: 50 }),
+  taxId: varchar('tax_id', { length: 100 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
+},
+  (t) => [
+    uniqueIndex('suppliers_unique_idx').on(t.tenantId, t.name),
+  ]
+);
+
+export const supplierLocations = pgTable('supplier_locations', {
+  id: uuid('id').primaryKey(),
+  supplierId: uuid('supplier_id')
+    .notNull()
+    .references(() => suppliers.id),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenant.id),
+  locationType: varchar('location_type', { length: 50 }).default('pickup'),
+  address: text('address'),
+  city: varchar('city', { length: 100 }),
+  state: varchar('state', { length: 100 }),
+  postalCode: varchar('postal_code', { length: 20 }),
+  country: varchar('country', { length: 100 }),
+  latitude: decimal('latitude', { precision: 9, scale: 6 }),
+  longitude: decimal('longitude', { precision: 9, scale: 6 }),
+  contactPerson: varchar('contact_person', { length: 255 }),
+  phone: varchar('phone', { length: 50 }),
+  email: varchar('email', { length: 255 }),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const customers = pgTable('customers', {
+  id: uuid('id').primaryKey(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenant.id),
+  name: varchar('name', { length: 255 }).notNull(),
+  contactPerson: varchar('contact_person', { length: 255 }),
+  email: varchar('email', { length: 255 }),
+  phone: varchar('phone', { length: 50 }),
+  taxId: varchar('tax_id', { length: 100 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
+},
+  (t) => [
+    uniqueIndex('customers_unique_idx').on(t.tenantId, t.name),
+  ]
+);
+
+export const customerLocations = pgTable('customer_locations', {
+  id: uuid('id').primaryKey(),
+  customerId: uuid('customer_id')
+    .notNull()
+    .references(() => customers.id),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenant.id),
+  locationType: varchar('location_type', { length: 50 }).notNull(),
+  address: text('address'),
+  city: varchar('city', { length: 100 }),
+  state: varchar('state', { length: 100 }),
+  postalCode: varchar('postal_code', { length: 20 }),
+  country: varchar('country', { length: 100 }),
+  latitude: decimal('latitude', { precision: 9, scale: 6 }),
+  longitude: decimal('longitude', { precision: 9, scale: 6 }),
+  contactPerson: varchar('contact_person', { length: 255 }),
+  phone: varchar('phone', { length: 50 }),
+  email: varchar('email', { length: 255 }),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const productTypesRelations = relations(productTypes, ({ one, many }) => ({
   tenant: one(tenant, {
     fields: [productTypes.tenantId],
@@ -98,6 +180,44 @@ export const productsRelations = relations(products, ({ one }) => ({
   }),
 }));
 
+export const suppliersRelations = relations(suppliers, ({ one, many }) => ({
+  tenant: one(tenant, {
+    fields: [suppliers.tenantId],
+    references: [tenant.id],
+  }),
+  locations: many(supplierLocations),
+}));
+
+export const supplierLocationsRelations = relations(supplierLocations, ({ one }) => ({
+  supplier: one(suppliers, {
+    fields: [supplierLocations.supplierId],
+    references: [suppliers.id],
+  }),
+  tenant: one(tenant, {
+    fields: [supplierLocations.tenantId],
+    references: [tenant.id],
+  }),
+}));
+
+export const customersRelations = relations(customers, ({ one, many }) => ({
+  tenant: one(tenant, {
+    fields: [customers.tenantId],
+    references: [tenant.id],
+  }),
+  locations: many(customerLocations),
+}));
+
+export const customerLocationsRelations = relations(customerLocations, ({ one }) => ({
+  customer: one(customers, {
+    fields: [customerLocations.customerId],
+    references: [customers.id],
+  }),
+  tenant: one(tenant, {
+    fields: [customerLocations.tenantId],
+    references: [tenant.id],
+  }),
+}));
+
 export type ProductType = typeof productTypes.$inferSelect;
 export type NewProductType = typeof productTypes.$inferInsert;
 
@@ -106,3 +226,15 @@ export type NewPackageType = typeof packageTypes.$inferInsert;
 
 export type Product = typeof products.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
+
+export type Supplier = typeof suppliers.$inferSelect;
+export type NewSupplier = typeof suppliers.$inferInsert;
+
+export type SupplierLocation = typeof supplierLocations.$inferSelect;
+export type NewSupplierLocation = typeof supplierLocations.$inferInsert;
+
+export type Customer = typeof customers.$inferSelect;
+export type NewCustomer = typeof customers.$inferInsert;
+
+export type CustomerLocation = typeof customerLocations.$inferSelect;
+export type NewCustomerLocation = typeof customerLocations.$inferInsert;

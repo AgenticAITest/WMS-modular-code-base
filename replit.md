@@ -12,6 +12,13 @@ A comprehensive admin dashboard built with React, TypeScript, Vite, and Drizzle 
 - ✅ Deployment configuration ready
 
 ## Recent Changes (October 14, 2025)
+- **Customer and Supplier Schema Implementation:**
+  - Added 4 new database tables: suppliers, supplier_locations, customers, customer_locations
+  - Implemented in master-data module following modular architecture pattern
+  - Added multi-tenant support with proper foreign key relationships
+  - Unique indexes on (tenant_id, name) for suppliers and customers
+  - Location tracking with geolocation support (latitude/longitude)
+  - Schema pushed to database successfully
 - **Master Data Management Module Implemented:**
   - Created comprehensive Master Data Management page with 6-tab structure
   - Built 3 functional tabs with full CRUD operations (Product, Inventory Type, Package Type)
@@ -87,6 +94,10 @@ A comprehensive admin dashboard built with React, TypeScript, Vite, and Drizzle 
 - **product_types**: Inventory type categories (name, description, category, status)
 - **package_types**: Package configurations (name, description, units, barcode, dimensions, weight)
 - **products**: Inventory items (SKU, name, type, package, stock levels, expiry, temperature range)
+- **suppliers**: Supplier master data (name, contact person, email, phone, tax ID)
+- **supplier_locations**: Supplier location details (pickup/billing addresses, geolocation, contact info)
+- **customers**: Customer master data (name, contact person, email, phone, tax ID)
+- **customer_locations**: Customer location details (billing/shipping addresses, geolocation, contact info)
 
 ### Environment Configuration
 Required secrets (already configured):
