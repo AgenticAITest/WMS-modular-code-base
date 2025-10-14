@@ -1301,13 +1301,27 @@ router.get('/suppliers', authorized('ADMIN', 'master-data.view'), async (req, re
       .from(suppliers)
       .where(and(...whereConditions));
 
-    const data = await db
+    const suppliersList = await db
       .select()
       .from(suppliers)
       .where(and(...whereConditions))
       .orderBy(desc(suppliers.createdAt))
       .limit(limit)
       .offset(offset);
+
+    const data = await Promise.all(
+      suppliersList.map(async (supplier) => {
+        const [locationCount] = await db
+          .select({ count: count() })
+          .from(supplierLocations)
+          .where(eq(supplierLocations.supplierId, supplier.id));
+        
+        return {
+          ...supplier,
+          locationCount: locationCount.count,
+        };
+      })
+    );
 
     const totalPages = Math.ceil(totalResult.count / limit);
 
@@ -1805,13 +1819,27 @@ router.get('/customers', authorized('ADMIN', 'master-data.view'), async (req, re
       .from(customers)
       .where(and(...whereConditions));
 
-    const data = await db
+    const customersList = await db
       .select()
       .from(customers)
       .where(and(...whereConditions))
       .orderBy(desc(customers.createdAt))
       .limit(limit)
       .offset(offset);
+
+    const data = await Promise.all(
+      customersList.map(async (customer) => {
+        const [locationCount] = await db
+          .select({ count: count() })
+          .from(customerLocations)
+          .where(eq(customerLocations.customerId, customer.id));
+        
+        return {
+          ...customer,
+          locationCount: locationCount.count,
+        };
+      })
+    );
 
     const totalPages = Math.ceil(totalResult.count / limit);
 

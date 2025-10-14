@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, Pencil, Trash2, MoreHorizontal } from 'lucide-react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@client/provider/AuthProvider';
 import { Button } from '@client/components/ui/button';
@@ -14,12 +14,6 @@ import {
   TableHeader,
   TableRow,
 } from '@client/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@client/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,6 +45,7 @@ interface Supplier {
   email: string | null;
   phone: string | null;
   taxId: string | null;
+  locationCount?: number;
   locations?: SupplierLocation[];
   isActive?: boolean;
 }
@@ -211,7 +206,7 @@ const SupplierTab = () => {
                   </TableCell>
                   <TableCell>
                     <span className="text-sm">
-                      {supplier.locations?.length || 0} location{supplier.locations?.length !== 1 ? 's' : ''}
+                      {supplier.locationCount || 0} location{supplier.locationCount !== 1 ? 's' : ''}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -220,26 +215,22 @@ const SupplierTab = () => {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(supplier)}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(supplier)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(supplier)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(supplier)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
