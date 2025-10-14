@@ -90,6 +90,8 @@ const CustomerDialog = ({
     name: 'locations',
   });
 
+  const [coordinateInputs, setCoordinateInputs] = useState<{ [key: string]: string }>({});
+
   useEffect(() => {
     if (editingItem) {
       reset({
@@ -112,6 +114,18 @@ const CustomerDialog = ({
     }
   }, [editingItem, open, reset]);
 
+  useEffect(() => {
+    const coords: { [key: string]: string } = {};
+    fields.forEach((field, idx) => {
+      const long = watch(`locations.${idx}.longitude`);
+      const lat = watch(`locations.${idx}.latitude`);
+      if (long != null && lat != null) {
+        coords[field.id] = `${long},${lat}`;
+      }
+    });
+    setCoordinateInputs(coords);
+  }, [fields.length, editingItem]);
+
   const onSubmit = async (data: CustomerForm) => {
     try {
       const payload = {
@@ -125,8 +139,8 @@ const CustomerDialog = ({
           email: loc.email || undefined,
           phone: loc.phone || undefined,
           contactPerson: loc.contactPerson || undefined,
-          latitude: loc.latitude || undefined,
-          longitude: loc.longitude || undefined,
+          latitude: loc.latitude ?? undefined,
+          longitude: loc.longitude ?? undefined,
         })),
       };
 
@@ -363,7 +377,33 @@ const CustomerDialog = ({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Coordinates (long,lat)</Label>
+                        <Input
+                          placeholder="e.g., 103.8198,1.3521"
+                          value={coordinateInputs[field.id] || ''}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setCoordinateInputs(prev => ({ ...prev, [field.id]: value }));
+                            
+                            const parts = value.split(',').map(p => p.trim());
+                            if (parts.length === 2) {
+                              const long = parseFloat(parts[0]);
+                              const lat = parseFloat(parts[1]);
+                              if (!isNaN(long) && !isNaN(lat)) {
+                                setValue(`locations.${index}.longitude`, long);
+                                setValue(`locations.${index}.latitude`, lat);
+                              }
+                            } else if (value === '') {
+                              setValue(`locations.${index}.longitude`, undefined);
+                              setValue(`locations.${index}.latitude`, undefined);
+                            }
+                          }}
+                        />
+                        <p className="text-xs text-muted-foreground">Copy from Google Maps</p>
+                      </div>
+
                       <div className="space-y-2">
                         <Label>Phone</Label>
                         <Input
@@ -371,7 +411,9 @@ const CustomerDialog = ({
                           placeholder="Location phone"
                         />
                       </div>
+                    </div>
 
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Email</Label>
                         <Input
