@@ -1,13 +1,20 @@
-import { Puzzle } from 'lucide-react';
+import { Puzzle, Database } from 'lucide-react';
 
 export const masterDataSidebarMenus = {
     id: 'master-data',
     title: 'Master Data',
     url: '/console/modules/master-data',
-    icon: Puzzle, // TODO: Change to appropriate icon
+    icon: Database,
     roles: 'ADMIN', 
     permissions: ['master-data.view'],
     items: [
+      {
+        id: "master-data-management",
+        title: "Master Data Management",
+        url: "/console/modules/master-data/management",
+        roles: "ADMIN",
+        permissions: "master-data.view",
+      },
       {
         id: "master-data-list",
         title: "Master Data List",
