@@ -18,6 +18,7 @@ import {
 } from "@client/components/ui/sidebar"
 import { sampleModuleSidebarMenus } from "../../modules/sample-module/client/menus/sideBarMenus"
 
+import { masterDataSidebarMenus } from "../../modules/master-data/client/menus/sideBarMenus"
 // This is sample data.
 const data = {
   // teams: [
@@ -133,6 +134,8 @@ const data = {
         },
       ],
     },
+    masterDataSidebarMenus,
+
     sampleModuleSidebarMenus,
   ],
 }

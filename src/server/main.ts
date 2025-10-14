@@ -4,6 +4,7 @@ import fileUpload from "express-fileupload";
 import { rateLimit } from 'express-rate-limit';
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
+import masterDataRoutes from '../modules/master-data/server/routes/masterDataRoutes';
 import ViteExpress from "vite-express";
 import authRoutes from "./routes/auth/auth";
 import departmentRoutes from "./routes/demo/department";
@@ -88,6 +89,9 @@ app.use('/api/demo/department', departmentRoutes);
 
 // sample module routes
 app.use('/api/modules/sample-module', sampleModuleRoutes);
+
+// master-data routes
+app.use('/api/modules/master-data', masterDataRoutes);
 
 ViteExpress.listen(app, 5000, () =>
   console.log("Server is listening on port 5000..."),

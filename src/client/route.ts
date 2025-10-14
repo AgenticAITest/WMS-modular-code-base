@@ -10,6 +10,7 @@ import Home from "@client/pages/Home";
 import RootLayout from "@client/pages/RootLayout";
 import { createBrowserRouter, redirect } from "react-router";
 import { sampleModuleReactRoutes } from '../modules/sample-module/client/routes/sampleModuleReactRoutes';
+import { masterDataReactRoutes } from '../modules/master-data/client/routes/masterDataReactRoutes';
 import ForgetPassword from "./pages/auth/ForgetPassword";
 import RegisterTenant from "./pages/auth/RegisterTenant";
 import ResetPassword from "./pages/auth/ResetPassword";
@@ -160,6 +161,7 @@ export const router = createBrowserRouter([
             ]
           },
           sampleModuleReactRoutes("modules/sample-module"),
+            masterDataReactRoutes("modules/master-data"),
 ],
       },
     ],
