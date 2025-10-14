@@ -1318,7 +1318,7 @@ router.get('/suppliers', authorized('ADMIN', 'master-data.view'), async (req, re
         
         return {
           ...supplier,
-          locationCount: locationCount.count,
+          locationCount: Number(locationCount?.count) || 0,
         };
       })
     );
@@ -1836,7 +1836,7 @@ router.get('/customers', authorized('ADMIN', 'master-data.view'), async (req, re
         
         return {
           ...customer,
-          locationCount: locationCount.count,
+          locationCount: Number(locationCount?.count) || 0,
         };
       })
     );
