@@ -1,0 +1,55 @@
+{
+  "id": "sample-module",
+  "name": "Sample Module",
+  "owner": "React Admin Team",
+  "description": "A comprehensive sample module demonstrating the modular architecture pattern with full CRUD operations, authentication, and modern UI components. This module serves as a template and reference implementation for creating new modules in the React Admin system.",
+  "version": "1.0.0",
+  "metadata": {
+    "category": "Sample",
+    "tags": ["sample", "template", "crud", "example"],
+    "dependencies": {
+      "requires": [
+        "authentication",
+        "multi-tenant"
+      ],
+      "optional": []
+    },
+    "permissions": [
+      "sample-module.view",
+      "sample-module.create",
+      "sample-module.edit", 
+      "sample-module.delete"
+    ],
+    "routes": {
+      "api": "/api/modules/sample-module",
+      "client": "/console/modules/sample-module"
+    },
+    "database": {
+      "tables": ["sample_module"],
+      "relations": ["tenant"]
+    },
+    "features": [
+      "Create, Read, Update, Delete operations",
+      "Server-side pagination",
+      "Client-side search and filtering",
+      "Form validation",
+      "Multi-tenant support",
+      "TypeScript support",
+      "Modern UI with shadcn/ui components",
+      "Responsive design"
+    ]
+  },
+  "author": {
+    "name": "React Admin Team",
+    "email": "admin@example.com",
+    "url": "https://github.com/your-org/react-admin"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/react-admin.git",
+    "directory": "src/modules/sample-module"
+  },
+  "license": "MIT",
+  "createdAt": "2025-10-09T00:00:00Z",
+  "updatedAt": "2025-10-09T00:00:00Z"
+}
