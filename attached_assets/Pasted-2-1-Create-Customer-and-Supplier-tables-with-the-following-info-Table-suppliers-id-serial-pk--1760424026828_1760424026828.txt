@@ -1,0 +1,77 @@
+2.1 Create Customer and Supplier tables with the following info
+Table suppliers {
+  id serial [pk, increment]
+  tenant_id integer [ref: > tenants.id, not null]
+  name varchar(255) [not null]
+  contact_person varchar(255)
+  email varchar(255)
+  phone varchar(50)
+  tax_id varchar(100)
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    (tenant_id, name) [unique]
+    tenant_id
+  }
+}
+Table supplier_locations {
+  id serial [pk, increment]
+  supplier_id integer [ref: > suppliers.id, not null]
+  tenant_id integer [ref: > tenants.id, not null]
+  location_type varchar(50) [default: 'pickup', note: "pickup, billing"]
+  address text
+  city varchar(100)
+  state varchar(100)
+  postal_code varchar(20)
+  country varchar(100)
+  latitude decimal(9,6)
+  longitude decimal(9,6)
+  contact_person varchar(255)
+  phone varchar(50)
+  email varchar(255)
+  is_active boolean [default: true]
+  created_at timestamp [default: `now()`]
+  
+  indexes {
+    tenant_id
+  }
+}
+Table customers {
+  id serial [pk, increment]
+  tenant_id integer [ref: > tenants.id, not null]
+  name varchar(255) [not null]
+  contact_person varchar(255)
+  email varchar(255)
+  phone varchar(50)
+  tax_id varchar(100)
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    (tenant_id, name) [unique]
+    tenant_id
+  }
+}
+Table customer_locations {
+  id serial [pk, increment]
+  customer_id integer [ref: > customers.id, not null]
+  tenant_id integer [ref: > tenants.id, not null]
+  location_type varchar(50) [not null, note: "billing, shipping"]
+  address text
+  city varchar(100)
+  state varchar(100)
+  postal_code varchar(20)
+  country varchar(100)
+  latitude decimal(9,6)
+  longitude decimal(9,6)
+  contact_person varchar(255)
+  phone varchar(50)
+  email varchar(255)
+  is_active boolean [default: true]
+  created_at timestamp [default: `now()`]
+  
+  indexes {
+    tenant_id
+  }
+}
