@@ -223,14 +223,14 @@ const ProductDialog = ({
             <div className="space-y-2">
               <Label htmlFor="inventoryTypeId">Inventory Type</Label>
               <Select
-                value={inventoryTypeId}
-                onValueChange={(value) => setValue('inventoryTypeId', value)}
+                value={inventoryTypeId || 'none'}
+                onValueChange={(value) => setValue('inventoryTypeId', value === 'none' ? '' : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {inventoryTypes.map((type) => (
                     <SelectItem key={type.id} value={type.id}>
                       {type.name}
@@ -243,14 +243,14 @@ const ProductDialog = ({
             <div className="space-y-2">
               <Label htmlFor="packageTypeId">Package Type</Label>
               <Select
-                value={packageTypeId}
-                onValueChange={(value) => setValue('packageTypeId', value)}
+                value={packageTypeId || 'none'}
+                onValueChange={(value) => setValue('packageTypeId', value === 'none' ? '' : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select package" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {packageTypes.map((pkg) => (
                     <SelectItem key={pkg.id} value={pkg.id}>
                       {pkg.name}
