@@ -64,6 +64,12 @@ router.use(checkModuleAuthorization('warehouse-setup'));
  *         name: search
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: includeHierarchy
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: Include full hierarchy (zones, aisles, shelves, bins) in single request
  *     responses:
  *       200:
  *         description: List of warehouses
@@ -74,6 +80,7 @@ router.get('/warehouses', authorized('ADMIN', 'warehouse-setup.view'), async (re
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const search = req.query.search as string;
+    const includeHierarchy = req.query.includeHierarchy === 'true';
     const offset = (page - 1) * limit;
 
     const whereConditions = [eq(warehouses.tenantId, tenantId)];
@@ -86,13 +93,71 @@ router.get('/warehouses', authorized('ADMIN', 'warehouse-setup.view'), async (re
       .from(warehouses)
       .where(and(...whereConditions));
 
-    const data = await db
+    const warehouseData = await db
       .select()
       .from(warehouses)
       .where(and(...whereConditions))
       .orderBy(desc(warehouses.createdAt))
       .limit(limit)
       .offset(offset);
+
+    let data = warehouseData;
+
+    // If includeHierarchy is true, load the complete hierarchy
+    if (includeHierarchy && warehouseData.length > 0) {
+      const warehouseIds = warehouseData.map(w => w.id);
+
+      // Fetch all zones for these warehouses
+      const zonesData = await db
+        .select()
+        .from(zones)
+        .where(and(
+          eq(zones.tenantId, tenantId),
+          eq(zones.warehouseId, warehouseIds.length === 1 ? warehouseIds[0] : zones.warehouseId)
+        ));
+
+      // Fetch all aisles for these zones
+      const zoneIds = zonesData.map(z => z.id);
+      const aislesData = zoneIds.length > 0 ? await db
+        .select()
+        .from(aisles)
+        .where(eq(aisles.tenantId, tenantId)) : [];
+
+      // Fetch all shelves for these aisles
+      const aisleIds = aislesData.map(a => a.id);
+      const shelvesData = aisleIds.length > 0 ? await db
+        .select()
+        .from(shelves)
+        .where(eq(shelves.tenantId, tenantId)) : [];
+
+      // Fetch all bins for these shelves
+      const shelfIds = shelvesData.map(s => s.id);
+      const binsData = shelfIds.length > 0 ? await db
+        .select()
+        .from(bins)
+        .where(eq(bins.tenantId, tenantId)) : [];
+
+      // Build the hierarchy
+      data = warehouseData.map(warehouse => {
+        const warehouseZones = zonesData
+          .filter(z => z.warehouseId === warehouse.id)
+          .map(zone => {
+            const zoneAisles = aislesData
+              .filter(a => a.zoneId === zone.id)
+              .map(aisle => {
+                const aisleShelves = shelvesData
+                  .filter(s => s.aisleId === aisle.id)
+                  .map(shelf => {
+                    const shelfBins = binsData.filter(b => b.shelfId === shelf.id);
+                    return { ...shelf, bins: shelfBins };
+                  });
+                return { ...aisle, shelves: aisleShelves };
+              });
+            return { ...zone, aisles: zoneAisles };
+          });
+        return { ...warehouse, zones: warehouseZones };
+      });
+    }
 
     const totalPages = Math.ceil(totalResult.count / limit);
 
