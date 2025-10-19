@@ -9,6 +9,13 @@ export const warehouseSetupSidebarMenus = {
     permissions: ['warehouse-setup.view'],
     items: [
       {
+        id: "warehouse-setup-management",
+        title: "Warehouse setup",
+        url: "/console/modules/warehouse-setup/management",
+        roles: "ADMIN",
+        permissions: "warehouse-setup.view",
+      },
+      {
         id: "warehouse-setup-list",
         title: "Warehouse Setup List",
         url: "/console/modules/warehouse-setup",
