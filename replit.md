@@ -12,6 +12,14 @@ A comprehensive admin dashboard built with React, TypeScript, Vite, and Drizzle 
 - ✅ Deployment configuration ready
 
 ## Recent Changes (October 19, 2025)
+- **Warehouse Setup CRUD APIs Completed:**
+  - Implemented full CRUD operations for all 6 warehouse entities (warehouses, warehouse_configs, zones, aisles, shelves, bins)
+  - Created 30 API endpoints with complete Swagger documentation
+  - All endpoints support multi-tenant isolation and proper authentication/authorization
+  - Hierarchical queries support filtering by parent entity (e.g., zones by warehouseId, bins by shelfId)
+  - Created seed script to populate test data following correct hierarchical structure
+  - Test data successfully seeded: 1 warehouse, 1 config, 3 zones, 3 aisles, 4 shelves, 6 bins
+  - All APIs verified and accessible via /api-docs
 - **Warehouse Setup Module Enhanced:**
   - Added "Warehouse setup" submenu under "Warehouse Setup" parent menu
   - Created WarehouseSetupManagement page with 4-tab structure (Warehouses, Zones, Locations, Storage Types)
@@ -147,7 +155,13 @@ Optional configuration:
 - `/api/modules/master-data/products` - Products CRUD
 - `/api/modules/master-data/suppliers` - Suppliers CRUD with nested locations
 - `/api/modules/master-data/customers` - Customers CRUD with nested locations
-- `/api-docs` - Swagger UI documentation (75 endpoints)
+- `/api/modules/warehouse-setup/warehouses` - Warehouses CRUD
+- `/api/modules/warehouse-setup/warehouse-configs` - Warehouse configs CRUD
+- `/api/modules/warehouse-setup/zones` - Zones CRUD (filter by warehouseId)
+- `/api/modules/warehouse-setup/aisles` - Aisles CRUD (filter by zoneId)
+- `/api/modules/warehouse-setup/shelves` - Shelves CRUD (filter by aisleId)
+- `/api/modules/warehouse-setup/bins` - Bins CRUD (filter by shelfId)
+- `/api-docs` - Swagger UI documentation (105 endpoints)
 
 ### Default Login Credentials
 After database seeding, you can login with:
