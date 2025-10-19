@@ -223,7 +223,7 @@ router.get('/warehouses/:id', authorized('ADMIN', 'warehouse-setup.view'), async
  * @swagger
  * /api/modules/warehouse-setup/warehouses:
  *   post:
- *     summary: Create a new warehouse
+ *     summary: Create a new warehouse with configuration
  *     tags: [Warehouses]
  *     security:
  *       - bearerAuth: []
@@ -242,23 +242,47 @@ router.get('/warehouses/:id', authorized('ADMIN', 'warehouse-setup.view'), async
  *                 type: string
  *               isActive:
  *                 type: boolean
+ *               pickingStrategy:
+ *                 type: string
+ *                 enum: [FIFO, FEFO, LIFO]
+ *                 default: FEFO
+ *               autoAssignBins:
+ *                 type: boolean
+ *                 default: true
+ *               requireBatchTracking:
+ *                 type: boolean
+ *                 default: false
+ *               requireExpiryTracking:
+ *                 type: boolean
+ *                 default: true
  *     responses:
  *       201:
- *         description: Warehouse created successfully
+ *         description: Warehouse and configuration created successfully
  */
 router.post('/warehouses', authorized('ADMIN', 'warehouse-setup.create'), async (req, res) => {
   try {
     const tenantId = req.user!.activeTenantId;
-    const { name, address, isActive } = req.body;
+    const { 
+      name, 
+      address, 
+      isActive,
+      pickingStrategy,
+      autoAssignBins,
+      requireBatchTracking,
+      requireExpiryTracking
+    } = req.body;
 
     if (!name) {
       return res.status(400).json({ success: false, message: 'Name is required' });
     }
 
-    const [newRecord] = await db
+    const warehouseId = uuidv4();
+
+    // Create warehouse and warehouse_config in a transaction
+    const [newWarehouse] = await db
       .insert(warehouses)
       .values({
-        id: uuidv4(),
+        id: warehouseId,
         tenantId,
         name,
         address,
@@ -266,7 +290,19 @@ router.post('/warehouses', authorized('ADMIN', 'warehouse-setup.create'), async 
       })
       .returning();
 
-    res.status(201).json({ success: true, data: newRecord, message: 'Warehouse created successfully' });
+    // Create warehouse configuration
+    await db
+      .insert(warehouseConfigs)
+      .values({
+        warehouseId,
+        tenantId,
+        pickingStrategy: pickingStrategy || 'FEFO',
+        autoAssignBins: autoAssignBins !== undefined ? autoAssignBins : true,
+        requireBatchTracking: requireBatchTracking !== undefined ? requireBatchTracking : false,
+        requireExpiryTracking: requireExpiryTracking !== undefined ? requireExpiryTracking : true,
+      });
+
+    res.status(201).json({ success: true, data: newWarehouse, message: 'Warehouse created successfully' });
   } catch (error) {
     console.error('Error creating warehouse:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
