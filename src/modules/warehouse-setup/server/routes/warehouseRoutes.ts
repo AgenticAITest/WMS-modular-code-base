@@ -279,28 +279,35 @@ router.post('/warehouses', authorized('ADMIN', 'warehouse-setup.create'), async 
     const warehouseId = uuidv4();
 
     // Create warehouse and warehouse_config in a transaction
-    const [newWarehouse] = await db
-      .insert(warehouses)
-      .values({
-        id: warehouseId,
-        tenantId,
-        name,
-        address,
-        isActive: isActive !== undefined ? isActive : true,
-      })
-      .returning();
+    await db.transaction(async (tx) => {
+      await tx
+        .insert(warehouses)
+        .values({
+          id: warehouseId,
+          tenantId,
+          name,
+          address,
+          isActive: isActive !== undefined ? isActive : true,
+        });
 
-    // Create warehouse configuration
-    await db
-      .insert(warehouseConfigs)
-      .values({
-        warehouseId,
-        tenantId,
-        pickingStrategy: pickingStrategy || 'FEFO',
-        autoAssignBins: autoAssignBins !== undefined ? autoAssignBins : true,
-        requireBatchTracking: requireBatchTracking !== undefined ? requireBatchTracking : false,
-        requireExpiryTracking: requireExpiryTracking !== undefined ? requireExpiryTracking : true,
-      });
+      // Create warehouse configuration
+      await tx
+        .insert(warehouseConfigs)
+        .values({
+          warehouseId,
+          tenantId,
+          pickingStrategy: pickingStrategy || 'FEFO',
+          autoAssignBins: autoAssignBins !== undefined ? autoAssignBins : true,
+          requireBatchTracking: requireBatchTracking !== undefined ? requireBatchTracking : false,
+          requireExpiryTracking: requireExpiryTracking !== undefined ? requireExpiryTracking : true,
+        });
+    });
+
+    // Fetch the created warehouse to return
+    const [newWarehouse] = await db
+      .select()
+      .from(warehouses)
+      .where(eq(warehouses.id, warehouseId));
 
     res.status(201).json({ success: true, data: newWarehouse, message: 'Warehouse created successfully' });
   } catch (error) {
