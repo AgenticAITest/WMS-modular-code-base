@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Dialog,
@@ -12,6 +12,13 @@ import { Button } from '@client/components/ui/button';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { Switch } from '@client/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@client/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import { warehouseFormSchema, type WarehouseFormData } from '../schemas/warehouseSchemas';
 import { useAuth } from '@client/provider/AuthProvider';
@@ -35,16 +42,24 @@ export function AddWarehouseDialog({ open, onOpenChange, onSuccess }: AddWarehou
     reset,
     setValue,
     watch,
+    control,
   } = useForm<WarehouseFormData>({
     resolver: zodResolver(warehouseFormSchema),
     defaultValues: {
       name: '',
       address: '',
       isActive: true,
+      pickingStrategy: 'FEFO',
+      autoAssignBins: true,
+      requireBatchTracking: false,
+      requireExpiryTracking: true,
     },
   });
 
   const isActive = watch('isActive');
+  const autoAssignBins = watch('autoAssignBins');
+  const requireBatchTracking = watch('requireBatchTracking');
+  const requireExpiryTracking = watch('requireExpiryTracking');
 
   const onSubmit = async (data: WarehouseFormData) => {
     setIsSubmitting(true);
@@ -108,6 +123,77 @@ export function AddWarehouseDialog({ open, onOpenChange, onSuccess }: AddWarehou
               checked={isActive}
               onCheckedChange={(checked) => setValue('isActive', checked)}
             />
+          </div>
+
+          <div className="border-t pt-4 space-y-4">
+            <h4 className="font-medium text-sm">Warehouse Configuration</h4>
+            
+            <div className="space-y-2">
+              <Label htmlFor="pickingStrategy">
+                Picking Strategy <span className="text-destructive">*</span>
+              </Label>
+              <Controller
+                name="pickingStrategy"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="pickingStrategy">
+                      <SelectValue placeholder="Select strategy" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="FIFO">First In, First Out (FIFO)</SelectItem>
+                      <SelectItem value="FEFO">First Expired, First Out (FEFO)</SelectItem>
+                      <SelectItem value="LIFO">Last In, First Out (LIFO)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.pickingStrategy && (
+                <p className="text-sm text-destructive">{errors.pickingStrategy.message}</p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="autoAssignBins">Auto-assign Bins</Label>
+                <p className="text-sm text-muted-foreground">
+                  Automatically assign bins during putaway
+                </p>
+              </div>
+              <Switch
+                id="autoAssignBins"
+                checked={autoAssignBins}
+                onCheckedChange={(checked) => setValue('autoAssignBins', checked)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="requireBatchTracking">Batch Tracking</Label>
+                <p className="text-sm text-muted-foreground">
+                  Track inventory by batch numbers
+                </p>
+              </div>
+              <Switch
+                id="requireBatchTracking"
+                checked={requireBatchTracking}
+                onCheckedChange={(checked) => setValue('requireBatchTracking', checked)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="requireExpiryTracking">Expiry Tracking</Label>
+                <p className="text-sm text-muted-foreground">
+                  Track inventory expiration dates
+                </p>
+              </div>
+              <Switch
+                id="requireExpiryTracking"
+                checked={requireExpiryTracking}
+                onCheckedChange={(checked) => setValue('requireExpiryTracking', checked)}
+              />
+            </div>
           </div>
 
           <DialogFooter>
