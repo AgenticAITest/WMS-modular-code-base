@@ -11,7 +11,16 @@ A comprehensive admin dashboard built with React, TypeScript, Vite, and Drizzle 
 - ✅ Development workflow set up
 - ✅ Deployment configuration ready
 
-## Recent Changes (October 14, 2025)
+## Recent Changes (October 19, 2025)
+- **Warehouse Setup Module Enhanced:**
+  - Added "Warehouse setup" submenu under "Warehouse Setup" parent menu
+  - Created WarehouseSetupManagement page with 4-tab structure (Warehouses, Zones, Locations, Storage Types)
+  - Implemented comprehensive warehouse database schema with 6 tables
+  - All tables support multi-tenant architecture with proper foreign key relationships
+  - Hierarchical structure: Warehouses → Zones → Aisles → Shelves → Bins
+  - Schema successfully pushed to database
+
+## Previous Changes (October 14, 2025)
 - **Customer and Supplier CRUD APIs Implemented:**
   - Created full CRUD APIs for suppliers and customers in master-data module
   - Implemented nested location management (one supplier/customer → multiple locations)
@@ -106,6 +115,14 @@ A comprehensive admin dashboard built with React, TypeScript, Vite, and Drizzle 
 - **supplier_locations**: Supplier location details (pickup/billing addresses, geolocation, contact info)
 - **customers**: Customer master data (name, contact person, email, phone, tax ID)
 - **customer_locations**: Customer location details (billing/shipping addresses, geolocation, contact info)
+
+**Warehouse Setup Tables:**
+- **warehouses**: Main warehouse entities (name, address, active status)
+- **warehouse_configs**: Warehouse configuration settings (picking strategy: FIFO/FEFO/LIFO, batch tracking, expiry tracking)
+- **zones**: Warehouse zones/areas within each warehouse (name, description)
+- **aisles**: Aisles within zones (name, description)
+- **shelves**: Shelves within aisles (name, description)
+- **bins**: Storage bins within shelves (name, barcode, max weight/volume, fixed SKU, temperature requirements, accessibility score)
 
 ### Environment Configuration
 Required secrets (already configured):

@@ -1,0 +1,87 @@
+Table warehouses {
+  id serial [pk, increment]
+  tenant_id integer [ref: > tenants.id, not null]
+  name varchar(255) [not null]
+  address text
+  is_active boolean [default: true]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    (tenant_id, name) [unique]
+    tenant_id
+  }
+}
+Table warehouse_configs {
+  id serial [pk, increment]
+  warehouse_id integer [ref: > warehouses.id, not null]
+  tenant_id integer [ref: > tenants.id, not null]
+  picking_strategy varchar(50) [default: 'FEFO', note: "FIFO, FEFO, LIFO"]
+  auto_assign_bins boolean [default: true]
+  require_batch_tracking boolean [default: false]
+  require_expiry_tracking boolean [default: true]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    tenant_id
+  }
+}
+Table zones {
+  id serial [pk, increment]
+  warehouse_id integer [ref: > warehouses.id, not null]
+  tenant_id integer [ref: > tenants.id, not null]
+  name varchar(255) [not null]
+  description text
+  created_at timestamp [default: `now()`]
+  
+  indexes {
+    (warehouse_id, name) [unique]
+    tenant_id
+  }
+}
+Table aisles {
+  id serial [pk, increment]
+  zone_id integer [ref: > zones.id, not null]
+  tenant_id integer [ref: > tenants.id, not null]
+  name varchar(255) [not null]
+  description text
+  created_at timestamp [default: `now()`]
+  
+  indexes {
+    (zone_id, name) [unique]
+    tenant_id
+  }
+}
+Table shelves {
+  id serial [pk, increment]
+  aisle_id integer [ref: > aisles.id, not null]
+  tenant_id integer [ref: > tenants.id, not null]
+  name varchar(255) [not null]
+  description text
+  created_at timestamp [default: `now()`]
+  
+  indexes {
+    (aisle_id, name) [unique]
+    tenant_id
+  }
+}
+Table bins {
+  id serial [pk, increment]
+  shelf_id integer [ref: > shelves.id, not null]
+  tenant_id integer [ref: > tenants.id, not null]
+  name varchar(255) [not null]
+  barcode varchar(100)
+  max_weight decimal(10,3)
+  max_volume decimal(10,3)
+  fixed_sku varchar(255)
+  category varchar(100)
+  required_temperature varchar(50)
+  accessibility_score integer [default: 50, note: "0-100 scale"]
+  created_at timestamp [default: `now()`]
+  
+  indexes {
+    (shelf_id, name) [unique]
+    tenant_id
+  }
+}
