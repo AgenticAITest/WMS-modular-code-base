@@ -63,13 +63,16 @@ export const WarehouseHierarchyView = () => {
   const fetchWarehouses = async () => {
     try {
       setLoading(true);
+      console.log('Fetching warehouses with token:', accessToken ? 'Token present' : 'NO TOKEN');
       const response = await axios.get('/api/modules/warehouse-setup/warehouses', {
         headers: { Authorization: `Bearer ${accessToken}` },
         params: { limit: 100 }
       });
+      console.log('Warehouse response:', response.data);
       setWarehouses(response.data.data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching warehouses:', error);
+      console.error('Error details:', error.response?.data || error.message);
     } finally {
       setLoading(false);
     }
