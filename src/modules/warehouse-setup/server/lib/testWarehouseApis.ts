@@ -18,7 +18,7 @@ async function testWarehouseApis() {
   console.log('   - POST, PUT, DELETE operations for all entities');
   console.log('\n' + '='.repeat(60));
 
-  const testTenantId = '00000000-0000-0000-0000-000000000001';
+  const testTenantId = '4f8db800-fc72-4e89-a8f9-acdfc07d95e6';
   
   console.log(`\nSeeding warehouse data for tenant: ${testTenantId}\n`);
   
