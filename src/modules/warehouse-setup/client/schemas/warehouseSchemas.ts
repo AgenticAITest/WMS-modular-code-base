@@ -4,6 +4,10 @@ export const warehouseFormSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255, 'Name is too long'),
   address: z.string().optional(),
   isActive: z.boolean(),
+  pickingStrategy: z.enum(['FIFO', 'FEFO', 'LIFO']),
+  autoAssignBins: z.boolean(),
+  requireBatchTracking: z.boolean(),
+  requireExpiryTracking: z.boolean(),
 });
 
 export const zoneFormSchema = z.object({
