@@ -11,6 +11,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@client/components/ui/dropdown-menu';
+import { AddWarehouseDialog } from './AddWarehouseDialog';
+import { AddZoneDialog } from './AddZoneDialog';
+import { AddAisleDialog } from './AddAisleDialog';
+import { AddShelfDialog } from './AddShelfDialog';
+import { AddBinDialog } from './AddBinDialog';
 
 interface Bin {
   id: string;
@@ -60,6 +65,17 @@ export const WarehouseHierarchyView = () => {
   const [expandedAisles, setExpandedAisles] = useState<string[]>([]);
   const [expandedShelves, setExpandedShelves] = useState<string[]>([]);
 
+  const [warehouseDialogOpen, setWarehouseDialogOpen] = useState(false);
+  const [zoneDialogOpen, setZoneDialogOpen] = useState(false);
+  const [aisleDialogOpen, setAisleDialogOpen] = useState(false);
+  const [shelfDialogOpen, setShelfDialogOpen] = useState(false);
+  const [binDialogOpen, setBinDialogOpen] = useState(false);
+
+  const [selectedWarehouse, setSelectedWarehouse] = useState<{ id: string; name: string } | null>(null);
+  const [selectedZone, setSelectedZone] = useState<{ id: string; name: string } | null>(null);
+  const [selectedAisle, setSelectedAisle] = useState<{ id: string; name: string } | null>(null);
+  const [selectedShelf, setSelectedShelf] = useState<{ id: string; name: string } | null>(null);
+
   const fetchWarehouses = async () => {
     try {
       setLoading(true);
@@ -95,7 +111,7 @@ export const WarehouseHierarchyView = () => {
         <p className="text-sm text-muted-foreground mb-4">
           Get started by creating your first warehouse
         </p>
-        <Button>
+        <Button onClick={() => setWarehouseDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Add Warehouse
         </Button>
@@ -112,7 +128,7 @@ export const WarehouseHierarchyView = () => {
             Hierarchical view of warehouses, zones, aisles, shelves, and bins
           </p>
         </div>
-        <Button>
+        <Button onClick={() => setWarehouseDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Add Warehouse
         </Button>
@@ -152,7 +168,12 @@ export const WarehouseHierarchyView = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedWarehouse({ id: warehouse.id, name: warehouse.name });
+                            setZoneDialogOpen(true);
+                          }}
+                        >
                           <Plus className="h-4 w-4 mr-2" />
                           Add Zone
                         </DropdownMenuItem>
@@ -203,7 +224,12 @@ export const WarehouseHierarchyView = () => {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setSelectedZone({ id: zone.id, name: zone.name });
+                                      setAisleDialogOpen(true);
+                                    }}
+                                  >
                                     <Plus className="h-4 w-4 mr-2" />
                                     Add Aisle
                                   </DropdownMenuItem>
@@ -254,7 +280,12 @@ export const WarehouseHierarchyView = () => {
                                             </Button>
                                           </DropdownMenuTrigger>
                                           <DropdownMenuContent align="end">
-                                            <DropdownMenuItem>
+                                            <DropdownMenuItem
+                                              onClick={() => {
+                                                setSelectedAisle({ id: aisle.id, name: aisle.name });
+                                                setShelfDialogOpen(true);
+                                              }}
+                                            >
                                               <Plus className="h-4 w-4 mr-2" />
                                               Add Shelf
                                             </DropdownMenuItem>
@@ -305,7 +336,12 @@ export const WarehouseHierarchyView = () => {
                                                       </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                      <DropdownMenuItem>
+                                                      <DropdownMenuItem
+                                                        onClick={() => {
+                                                          setSelectedShelf({ id: shelf.id, name: shelf.name });
+                                                          setBinDialogOpen(true);
+                                                        }}
+                                                      >
                                                         <Plus className="h-4 w-4 mr-2" />
                                                         Add Bin
                                                       </DropdownMenuItem>
@@ -386,6 +422,52 @@ export const WarehouseHierarchyView = () => {
           </div>
         ))}
       </div>
+
+      <AddWarehouseDialog
+        open={warehouseDialogOpen}
+        onOpenChange={setWarehouseDialogOpen}
+        onSuccess={fetchWarehouses}
+      />
+
+      {selectedWarehouse && (
+        <AddZoneDialog
+          open={zoneDialogOpen}
+          onOpenChange={setZoneDialogOpen}
+          warehouseId={selectedWarehouse.id}
+          warehouseName={selectedWarehouse.name}
+          onSuccess={fetchWarehouses}
+        />
+      )}
+
+      {selectedZone && (
+        <AddAisleDialog
+          open={aisleDialogOpen}
+          onOpenChange={setAisleDialogOpen}
+          zoneId={selectedZone.id}
+          zoneName={selectedZone.name}
+          onSuccess={fetchWarehouses}
+        />
+      )}
+
+      {selectedAisle && (
+        <AddShelfDialog
+          open={shelfDialogOpen}
+          onOpenChange={setShelfDialogOpen}
+          aisleId={selectedAisle.id}
+          aisleName={selectedAisle.name}
+          onSuccess={fetchWarehouses}
+        />
+      )}
+
+      {selectedShelf && (
+        <AddBinDialog
+          open={binDialogOpen}
+          onOpenChange={setBinDialogOpen}
+          shelfId={selectedShelf.id}
+          shelfName={selectedShelf.name}
+          onSuccess={fetchWarehouses}
+        />
+      )}
     </div>
   );
 };
