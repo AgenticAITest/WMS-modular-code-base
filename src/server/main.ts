@@ -7,6 +7,7 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import { fileURLToPath } from 'url';
 import masterDataRoutes from '../modules/master-data/server/routes/masterDataRoutes';
+import warehouseSetupRoutes from '../modules/warehouse-setup/server/routes/warehouseSetupRoutes';
 import ViteExpress from "vite-express";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -97,6 +98,9 @@ app.use('/api/modules/sample-module', sampleModuleRoutes);
 
 // master-data routes
 app.use('/api/modules/master-data', masterDataRoutes);
+
+// warehouse-setup routes
+app.use('/api/modules/warehouse-setup', warehouseSetupRoutes);
 
 ViteExpress.listen(app, 5000, () =>
   console.log("Server is listening on port 5000..."),

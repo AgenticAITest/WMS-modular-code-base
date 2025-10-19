@@ -11,6 +11,7 @@ import RootLayout from "@client/pages/RootLayout";
 import { createBrowserRouter, redirect } from "react-router";
 import { sampleModuleReactRoutes } from '../modules/sample-module/client/routes/sampleModuleReactRoutes';
 import { masterDataReactRoutes } from '../modules/master-data/client/routes/masterDataReactRoutes';
+import { warehouseSetupReactRoutes } from '../modules/warehouse-setup/client/routes/warehouseSetupReactRoutes';
 import ForgetPassword from "./pages/auth/ForgetPassword";
 import RegisterTenant from "./pages/auth/RegisterTenant";
 import ResetPassword from "./pages/auth/ResetPassword";
@@ -162,6 +163,7 @@ export const router = createBrowserRouter([
           },
           sampleModuleReactRoutes("modules/sample-module"),
             masterDataReactRoutes("modules/master-data"),
+            warehouseSetupReactRoutes("modules/warehouse-setup"),
 ],
       },
     ],
