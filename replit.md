@@ -12,7 +12,19 @@ A comprehensive admin dashboard built with React, TypeScript, Vite, and Drizzle 
 - ✅ Deployment configuration ready
 
 ## Recent Changes (October 19, 2025)
-- **Warehouse Hierarchy Add Dialogs Completed (Latest):**
+- **Warehouse Creation with Configuration (Latest):**
+  - Updated Add Warehouse dialog to create both warehouse and warehouse_config records atomically
+  - Backend API now uses database transactions to ensure both records are created together or rolled back
+  - Added warehouse configuration fields to the form:
+    - Picking Strategy dropdown (FIFO, FEFO, LIFO)
+    - Auto-assign Bins toggle
+    - Batch Tracking toggle
+    - Expiry Tracking toggle
+  - Enhanced Zod schema to validate all warehouse config fields
+  - Default values match database defaults (FEFO strategy, auto-assign enabled, expiry tracking enabled)
+  - Proper transaction handling ensures no orphaned warehouse records without configuration
+  - Architect-verified implementation with atomic database operations
+- **Warehouse Hierarchy Add Dialogs Completed:**
   - Created 5 fully functional add dialogs (Warehouse, Zone, Aisle, Shelf, Bin)
   - Implemented Zod validation schemas matching database table structures
   - Integrated React Hook Form with proper validation and error handling
