@@ -14,6 +14,7 @@ import { Label } from '@client/components/ui/label';
 import { Textarea } from '@client/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { aisleFormSchema, type AisleFormData } from '../schemas/warehouseSchemas';
+import { useAuth } from '@client/provider/AuthProvider';
 import axios from 'axios';
 import { toast } from 'sonner';
 
@@ -32,6 +33,7 @@ export function AddAisleDialog({
   zoneName,
   onSuccess,
 }: AddAisleDialogProps) {
+  const { token: accessToken } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -51,7 +53,9 @@ export function AddAisleDialog({
   const onSubmit = async (data: AisleFormData) => {
     setIsSubmitting(true);
     try {
-      await axios.post('/api/modules/warehouse-setup/aisles', data);
+      await axios.post('/api/modules/warehouse-setup/aisles', data, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
       toast.success('Aisle created successfully');
       reset();
       onOpenChange(false);

@@ -14,6 +14,7 @@ import { Label } from '@client/components/ui/label';
 import { Textarea } from '@client/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { shelfFormSchema, type ShelfFormData } from '../schemas/warehouseSchemas';
+import { useAuth } from '@client/provider/AuthProvider';
 import axios from 'axios';
 import { toast } from 'sonner';
 
@@ -32,6 +33,7 @@ export function AddShelfDialog({
   aisleName,
   onSuccess,
 }: AddShelfDialogProps) {
+  const { token: accessToken } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -51,7 +53,9 @@ export function AddShelfDialog({
   const onSubmit = async (data: ShelfFormData) => {
     setIsSubmitting(true);
     try {
-      await axios.post('/api/modules/warehouse-setup/shelves', data);
+      await axios.post('/api/modules/warehouse-setup/shelves', data, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
       toast.success('Shelf created successfully');
       reset();
       onOpenChange(false);

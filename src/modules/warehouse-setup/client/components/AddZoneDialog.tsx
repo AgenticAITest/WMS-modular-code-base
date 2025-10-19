@@ -14,6 +14,7 @@ import { Label } from '@client/components/ui/label';
 import { Textarea } from '@client/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { zoneFormSchema, type ZoneFormData } from '../schemas/warehouseSchemas';
+import { useAuth } from '@client/provider/AuthProvider';
 import axios from 'axios';
 import { toast } from 'sonner';
 
@@ -32,6 +33,7 @@ export function AddZoneDialog({
   warehouseName,
   onSuccess,
 }: AddZoneDialogProps) {
+  const { token: accessToken } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -51,7 +53,9 @@ export function AddZoneDialog({
   const onSubmit = async (data: ZoneFormData) => {
     setIsSubmitting(true);
     try {
-      await axios.post('/api/modules/warehouse-setup/zones', data);
+      await axios.post('/api/modules/warehouse-setup/zones', data, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
       toast.success('Zone created successfully');
       reset();
       onOpenChange(false);

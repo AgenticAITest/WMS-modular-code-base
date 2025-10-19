@@ -13,6 +13,7 @@ import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { binFormSchema, type BinFormData } from '../schemas/warehouseSchemas';
+import { useAuth } from '@client/provider/AuthProvider';
 import axios from 'axios';
 import { toast } from 'sonner';
 
@@ -31,6 +32,7 @@ export function AddBinDialog({
   shelfName,
   onSuccess,
 }: AddBinDialogProps) {
+  const { token: accessToken } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -56,7 +58,9 @@ export function AddBinDialog({
   const onSubmit = async (data: BinFormData) => {
     setIsSubmitting(true);
     try {
-      await axios.post('/api/modules/warehouse-setup/bins', data);
+      await axios.post('/api/modules/warehouse-setup/bins', data, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
       toast.success('Bin created successfully');
       reset();
       onOpenChange(false);

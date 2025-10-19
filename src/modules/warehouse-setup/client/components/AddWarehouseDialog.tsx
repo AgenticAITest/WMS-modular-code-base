@@ -14,6 +14,7 @@ import { Label } from '@client/components/ui/label';
 import { Switch } from '@client/components/ui/switch';
 import { Loader2 } from 'lucide-react';
 import { warehouseFormSchema, type WarehouseFormData } from '../schemas/warehouseSchemas';
+import { useAuth } from '@client/provider/AuthProvider';
 import axios from 'axios';
 import { toast } from 'sonner';
 
@@ -24,6 +25,7 @@ interface AddWarehouseDialogProps {
 }
 
 export function AddWarehouseDialog({ open, onOpenChange, onSuccess }: AddWarehouseDialogProps) {
+  const { token: accessToken } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -47,7 +49,9 @@ export function AddWarehouseDialog({ open, onOpenChange, onSuccess }: AddWarehou
   const onSubmit = async (data: WarehouseFormData) => {
     setIsSubmitting(true);
     try {
-      await axios.post('/api/modules/warehouse-setup/warehouses', data);
+      await axios.post('/api/modules/warehouse-setup/warehouses', data, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
       toast.success('Warehouse created successfully');
       reset();
       onOpenChange(false);

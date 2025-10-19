@@ -77,6 +77,8 @@ export const WarehouseHierarchyView = () => {
   const [selectedShelf, setSelectedShelf] = useState<{ id: string; name: string } | null>(null);
 
   const fetchWarehouses = async () => {
+    if (!accessToken) return;
+    
     try {
       setLoading(true);
       const response = await axios.get('/api/modules/warehouse-setup/warehouses', {
@@ -93,7 +95,7 @@ export const WarehouseHierarchyView = () => {
 
   useEffect(() => {
     fetchWarehouses();
-  }, []);
+  }, [accessToken]);
 
   if (loading) {
     return (
