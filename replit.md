@@ -12,10 +12,17 @@ A comprehensive admin dashboard built with React, TypeScript, Vite, and Drizzle 
 - ✅ Deployment configuration ready
 
 ## Recent Changes (October 19, 2025)
+- **Warehouse Hierarchy UX Optimization (Latest):**
+  - **Instant Expansion:** Optimized for SME/SMB warehouses - full hierarchy now loads in single API call
+  - Backend: Added `?includeHierarchy=true` query parameter to GET /warehouses endpoint
+  - Frontend: Removed lazy-loading, all data pre-loaded at page mount for instant accordion expansion
+  - Fixed critical nested button bug by repositioning dropdown menus outside AccordionTriggers
+  - Eliminated "No data" flash and API calls on expansion - smooth, immediate UX
+  - Clean code: Removed all debug console.log statements and lazy-loading handlers
+  - Zero console errors, architect-verified implementation
 - **Warehouse Hierarchy Accordion UI Completed and Working:**
   - Created WarehouseHierarchyView component with nested accordion visualization
   - Implemented 5-level hierarchical display: Warehouse → Zone → Aisle → Shelf → Bin
-  - Added lazy-loading for child collections (zones, aisles, shelves, bins) on accordion expansion
   - Visual hierarchy with icons (Warehouse, MapPin, Grid3x3, Layers, Package) and color-coded badges
   - Context menu with Add/Edit/Delete actions for each hierarchy level (handlers ready for implementation)
   - Removed old tab-based UI, replaced with single accordion view
