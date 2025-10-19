@@ -3,7 +3,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@c
 import { Button } from '@client/components/ui/button';
 import { Badge } from '@client/components/ui/badge';
 import { Plus, Warehouse, MapPin, Grid3x3, Layers, Package, MoreVertical, Edit, Trash2 } from 'lucide-react';
-import { useAuth } from '@client/provider/authProvider';
+import { useAuth } from '@client/provider/AuthProvider';
 import axios from 'axios';
 import {
   DropdownMenu,
@@ -52,7 +52,7 @@ interface WarehouseType {
 }
 
 export const WarehouseHierarchyView = () => {
-  const { accessToken } = useAuth();
+  const { token: accessToken } = useAuth();
   const [warehouses, setWarehouses] = useState<WarehouseType[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedWarehouses, setExpandedWarehouses] = useState<string[]>([]);

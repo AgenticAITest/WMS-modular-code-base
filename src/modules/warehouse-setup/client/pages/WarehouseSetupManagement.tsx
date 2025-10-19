@@ -1,5 +1,6 @@
 import { useSearchParams } from 'react-router';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@client/components/ui/tabs';
+import { WarehouseHierarchyView } from '../components/WarehouseHierarchyView';
 
 const PlaceholderTab = ({ title, description }: { title: string; description: string }) => (
   <div className="flex flex-col items-center justify-center p-12 text-center">
@@ -72,10 +73,7 @@ const WarehouseSetupManagement = () => {
         </TabsList>
 
         <TabsContent value="warehouses" className="mt-6">
-          <PlaceholderTab 
-            title="Warehouses" 
-            description="Warehouse management feature is under development. This will allow you to configure multiple warehouses with their basic information and settings."
-          />
+          <WarehouseHierarchyView />
         </TabsContent>
 
         <TabsContent value="zones" className="mt-6">
