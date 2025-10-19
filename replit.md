@@ -12,7 +12,18 @@ A comprehensive admin dashboard built with React, TypeScript, Vite, and Drizzle 
 - ✅ Deployment configuration ready
 
 ## Recent Changes (October 19, 2025)
-- **Warehouse Hierarchy UX Optimization (Latest):**
+- **Warehouse Hierarchy Add Dialogs Completed (Latest):**
+  - Created 5 fully functional add dialogs (Warehouse, Zone, Aisle, Shelf, Bin)
+  - Implemented Zod validation schemas matching database table structures
+  - Integrated React Hook Form with proper validation and error handling
+  - Fixed critical authentication issue - all dialogs now include Bearer token in POST requests
+  - Implemented token-aware data fetching - hierarchy refetches when auth token becomes available
+  - All add buttons throughout hierarchy open appropriate modals and successfully create entities
+  - Success callbacks refresh entire hierarchy to display newly created entities
+  - Comprehensive form fields including optional numeric values (dimensions, temperature, weight)
+  - Proper loading states during submission and error handling with toast notifications
+  - Architect-verified implementation ready for production use
+- **Warehouse Hierarchy UX Optimization:**
   - **Instant Expansion:** Optimized for SME/SMB warehouses - full hierarchy now loads in single API call
   - Backend: Added `?includeHierarchy=true` query parameter to GET /warehouses endpoint
   - Frontend: Removed lazy-loading, all data pre-loaded at page mount for instant accordion expansion
