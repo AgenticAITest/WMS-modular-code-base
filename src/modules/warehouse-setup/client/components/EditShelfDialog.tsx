@@ -64,20 +64,28 @@ export function EditShelfDialog({
   }, [shelf, open, setValue]);
 
   useEffect(() => {
-    if (!open && cleanupTimerRef.current) {
+    if (cleanupTimerRef.current) {
       clearTimeout(cleanupTimerRef.current);
       cleanupTimerRef.current = null;
     }
+
+    if (!open) {
+      cleanupTimerRef.current = setTimeout(() => {
+        document.body.style.pointerEvents = '';
+        cleanupTimerRef.current = null;
+      }, 100);
+    }
+
+    return () => {
+      if (cleanupTimerRef.current) {
+        clearTimeout(cleanupTimerRef.current);
+        cleanupTimerRef.current = null;
+      }
+    };
   }, [open]);
 
   const cleanupPointerEvents = () => {
-    if (cleanupTimerRef.current) {
-      clearTimeout(cleanupTimerRef.current);
-    }
-    cleanupTimerRef.current = setTimeout(() => {
-      document.body.style.pointerEvents = '';
-      cleanupTimerRef.current = null;
-    }, 100);
+    document.body.style.pointerEvents = '';
   };
 
   const onSubmit = async (data: ShelfFormData) => {

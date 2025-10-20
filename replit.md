@@ -26,7 +26,41 @@ None specified yet
 - UX enhancements for warehouse hierarchy, including instant expansion and robust add/edit dialogs with form validation.
 
 ### System Design Choices
-- **UI/UX**: Utilizes shadcn/ui and Radix UI for a consistent and accessible component library. The warehouse hierarchy employs an accordion-based visualization for intuitive navigation and management, with instant data loading for improved user experience. **Critical Fix**: All Dialog components (Add and Edit dialogs for Warehouse, Zone, Aisle, Shelf, and Bin) implement a robust pointer-events cleanup solution to address Radix UI's known Dialog interaction bug (GitHub #3445). The solution uses useRef-tracked setTimeout with 100ms delayed cleanup, race condition prevention via cleanup on dialog state changes, and proper timer clearing to ensure pointer-events are always restored when dialogs close, preventing the "clicks disabled after cancel" bug.
+- **UI/UX**: Utilizes shadcn/ui and Radix UI for a consistent and accessible component library. The warehouse hierarchy employs an accordion-based visualization for intuitive navigation and management, with instant data loading for improved user experience. **Critical Fix - Radix UI Dialog Bug**: ALL Dialog components must implement the exact pointer-events cleanup pattern shown below to prevent the "clicks disabled after closing dialog" bug (Radix UI GitHub #3445). This pattern is mandatory for all Add/Edit dialogs:
+  
+  ```typescript
+  // At component top level
+  const cleanupTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // useEffect pattern (MUST be exactly this)
+  useEffect(() => {
+    if (cleanupTimerRef.current) {
+      clearTimeout(cleanupTimerRef.current);
+      cleanupTimerRef.current = null;
+    }
+    
+    if (!open) {
+      cleanupTimerRef.current = setTimeout(() => {
+        document.body.style.pointerEvents = '';
+        cleanupTimerRef.current = null;
+      }, 100);
+    }
+    
+    return () => {
+      if (cleanupTimerRef.current) {
+        clearTimeout(cleanupTimerRef.current);
+        cleanupTimerRef.current = null;
+      }
+    };
+  }, [open]);
+  
+  // Simplified cleanup function
+  const cleanupPointerEvents = () => {
+    document.body.style.pointerEvents = '';
+  };
+  ```
+  
+  **Currently Fixed Dialogs**: AddWarehouseDialog, AddZoneDialog, AddAisleDialog, AddShelfDialog, AddBinDialog, EditWarehouseDialog, EditZoneDialog, EditAisleDialog, EditShelfDialog, EditBinDialog. Reference these files when creating new dialogs.
 - **Backend**: Employs a modular structure for features, with dedicated modules for system, master-data, and warehouse-setup. API endpoints follow a clear naming convention and support multi-tenant isolation. Database transactions are used for atomic operations, such as creating a warehouse and its configuration simultaneously.
 - **Database Schema**: Designed with a clear separation between system, master data, and warehouse-specific tables. Key relationships ensure data integrity and support multi-tenancy across all modules. Geolocation support is included for supplier and customer locations.
 - **Authentication**: JWT-based authentication for secure access, with separate tokens for access, refresh, and password reset.
