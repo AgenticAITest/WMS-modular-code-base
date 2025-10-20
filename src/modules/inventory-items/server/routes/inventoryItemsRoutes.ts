@@ -657,4 +657,191 @@ router.get('/inventory-items/stats/summary', authorized('ADMIN', 'inventory-item
   }
 });
 
+/**
+ * @swagger
+ * /api/modules/inventory-items/stock-information:
+ *   get:
+ *     summary: Get stock information aggregated by product
+ *     tags: [Inventory Items]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by product SKU or name
+ *     responses:
+ *       200:
+ *         description: Stock information aggregated by product
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/stock-information', authorized('ADMIN', 'inventory-items.view'), async (req, res) => {
+  try {
+    const tenantId = req.user!.activeTenantId;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = req.query.search as string;
+    const offset = (page - 1) * limit;
+
+    // Build where conditions
+    const whereConditions = [eq(inventoryItems.tenantId, tenantId)];
+    if (search) {
+      whereConditions.push(
+        or(
+          ilike(products.sku, `%${search}%`),
+          ilike(products.name, `%${search}%`)
+        )!
+      );
+    }
+
+    // Build query for stock information
+    const allResults = await db
+      .select({
+        productId: inventoryItems.productId,
+        productSku: products.sku,
+        productName: products.name,
+        productDescription: products.description,
+        hasExpiryDate: products.hasExpiryDate,
+        totalAvailableQuantity: sql<number>`SUM(${inventoryItems.availableQuantity})`,
+        totalReservedQuantity: sql<number>`SUM(${inventoryItems.reservedQuantity})`,
+        locationCount: sql<number>`COUNT(DISTINCT ${inventoryItems.binId})`,
+        firstBinId: sql<string>`MIN(${bins.id})`,
+        firstBinName: sql<string>`MIN(${bins.name})`,
+        earliestExpiryDate: sql<string>`MIN(${inventoryItems.expiryDate})`,
+      })
+      .from(inventoryItems)
+      .leftJoin(products, eq(inventoryItems.productId, products.id))
+      .leftJoin(bins, eq(inventoryItems.binId, bins.id))
+      .where(and(...whereConditions))
+      .groupBy(
+        inventoryItems.productId,
+        products.sku,
+        products.name,
+        products.description,
+        products.hasExpiryDate
+      );
+    const total = allResults.length;
+
+    // Apply pagination
+    const data = allResults
+      .sort((a, b) => (a.productSku || '').localeCompare(b.productSku || ''))
+      .slice(offset, offset + limit);
+
+    const totalPages = Math.ceil(total / limit);
+
+    res.json({
+      success: true,
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching stock information:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/modules/inventory-items/stock-information/{productId}/locations:
+ *   get:
+ *     summary: Get all locations and details for a specific product
+ *     tags: [Inventory Items]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Detailed location information for product
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/stock-information/:productId/locations', authorized('ADMIN', 'inventory-items.view'), async (req, res) => {
+  try {
+    const tenantId = req.user!.activeTenantId;
+    const { productId } = req.params;
+
+    // Get product details
+    const [product] = await db
+      .select()
+      .from(products)
+      .where(and(eq(products.id, productId), eq(products.tenantId, tenantId)));
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found',
+      });
+    }
+
+    // Get all inventory items for this product with bin details
+    const locations = await db
+      .select({
+        id: inventoryItems.id,
+        binId: bins.id,
+        binName: bins.name,
+        binBarcode: bins.barcode,
+        availableQuantity: inventoryItems.availableQuantity,
+        reservedQuantity: inventoryItems.reservedQuantity,
+        expiryDate: inventoryItems.expiryDate,
+        batchNumber: inventoryItems.batchNumber,
+        lotNumber: inventoryItems.lotNumber,
+        receivedDate: inventoryItems.receivedDate,
+        costPerUnit: inventoryItems.costPerUnit,
+        createdAt: inventoryItems.createdAt,
+        updatedAt: inventoryItems.updatedAt,
+      })
+      .from(inventoryItems)
+      .leftJoin(bins, eq(inventoryItems.binId, bins.id))
+      .where(
+        and(
+          eq(inventoryItems.tenantId, tenantId),
+          eq(inventoryItems.productId, productId)
+        )
+      )
+      .orderBy(bins.name);
+
+    res.json({
+      success: true,
+      data: {
+        product,
+        locations,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching product locations:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
 export default router;
