@@ -60,6 +60,7 @@ export const WarehouseHierarchyView = () => {
   const { token: accessToken } = useAuth();
   const [warehouses, setWarehouses] = useState<WarehouseType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [expandedWarehouses, setExpandedWarehouses] = useState<string[]>([]);
   const [expandedZones, setExpandedZones] = useState<string[]>([]);
   const [expandedAisles, setExpandedAisles] = useState<string[]>([]);
@@ -97,12 +98,13 @@ export const WarehouseHierarchyView = () => {
     if (!accessToken) return;
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 300));
       const response = await axios.get('/api/modules/warehouse-setup/warehouses', {
         headers: { Authorization: `Bearer ${accessToken}` },
         params: { limit: 100, includeHierarchy: true }
       });
       setWarehouses(response.data.data || []);
+      setRefreshKey(prev => prev + 1);
     } catch (error: any) {
       console.error('Error fetching warehouses:', error);
     }
@@ -151,7 +153,7 @@ export const WarehouseHierarchyView = () => {
         </Button>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2" key={refreshKey}>
         {warehouses.map((warehouse) => (
           <div key={warehouse.id} className="border rounded-lg">
             <Accordion
