@@ -15,6 +15,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/server/lib/db/seed.ts",
+    "db:seed-master-data": "tsx src/server/lib/db/seedMasterDataAndInventory.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
