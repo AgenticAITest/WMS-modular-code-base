@@ -61,6 +61,10 @@ export function AddWarehouseDialog({ open, onOpenChange, onSuccess }: AddWarehou
   const requireBatchTracking = watch('requireBatchTracking');
   const requireExpiryTracking = watch('requireExpiryTracking');
 
+  const cleanupPointerEvents = () => {
+    document.body.style.pointerEvents = '';
+  };
+
   const onSubmit = async (data: WarehouseFormData) => {
     setIsSubmitting(true);
     try {
@@ -69,6 +73,7 @@ export function AddWarehouseDialog({ open, onOpenChange, onSuccess }: AddWarehou
       });
       toast.success('Warehouse created successfully');
       reset();
+      cleanupPointerEvents();
       onOpenChange(false);
       onSuccess();
     } catch (error: any) {
@@ -83,6 +88,7 @@ export function AddWarehouseDialog({ open, onOpenChange, onSuccess }: AddWarehou
       onOpenChange(newOpen);
       if (!newOpen) {
         reset();
+        cleanupPointerEvents();
       }
     }
   };

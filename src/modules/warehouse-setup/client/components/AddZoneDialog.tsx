@@ -50,6 +50,10 @@ export function AddZoneDialog({
     },
   });
 
+  const cleanupPointerEvents = () => {
+    document.body.style.pointerEvents = '';
+  };
+
   const onSubmit = async (data: ZoneFormData) => {
     setIsSubmitting(true);
     try {
@@ -58,6 +62,7 @@ export function AddZoneDialog({
       });
       toast.success('Zone created successfully');
       reset();
+      cleanupPointerEvents();
       onOpenChange(false);
       onSuccess();
     } catch (error: any) {
@@ -72,6 +77,7 @@ export function AddZoneDialog({
       onOpenChange(newOpen);
       if (!newOpen) {
         reset();
+        cleanupPointerEvents();
       }
     }
   };

@@ -50,6 +50,10 @@ export function AddShelfDialog({
     },
   });
 
+  const cleanupPointerEvents = () => {
+    document.body.style.pointerEvents = '';
+  };
+
   const onSubmit = async (data: ShelfFormData) => {
     setIsSubmitting(true);
     try {
@@ -58,6 +62,7 @@ export function AddShelfDialog({
       });
       toast.success('Shelf created successfully');
       reset();
+      cleanupPointerEvents();
       onOpenChange(false);
       onSuccess();
     } catch (error: any) {
@@ -72,6 +77,7 @@ export function AddShelfDialog({
       onOpenChange(newOpen);
       if (!newOpen) {
         reset();
+        cleanupPointerEvents();
       }
     }
   };

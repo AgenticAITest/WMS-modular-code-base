@@ -100,6 +100,10 @@ export function AddBinDialog({
       product.name.toLowerCase().includes(skuSearch.toLowerCase())
   ).slice(0, 10);
 
+  const cleanupPointerEvents = () => {
+    document.body.style.pointerEvents = '';
+  };
+
   const onSubmit = async (data: BinFormData) => {
     setIsSubmitting(true);
     try {
@@ -108,6 +112,11 @@ export function AddBinDialog({
       });
       toast.success('Bin created successfully');
       reset();
+      setSelectedProduct(null);
+      setSkuSearch('');
+      setProducts([]);
+      setLoadingProducts(false);
+      cleanupPointerEvents();
       onOpenChange(false);
       onSuccess();
     } catch (error: any) {
@@ -126,6 +135,7 @@ export function AddBinDialog({
         setSkuSearch('');
         setProducts([]);
         setLoadingProducts(false);
+        cleanupPointerEvents();
       }
     }
   };

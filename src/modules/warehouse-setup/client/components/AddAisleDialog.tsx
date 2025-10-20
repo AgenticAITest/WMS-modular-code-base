@@ -50,6 +50,10 @@ export function AddAisleDialog({
     },
   });
 
+  const cleanupPointerEvents = () => {
+    document.body.style.pointerEvents = '';
+  };
+
   const onSubmit = async (data: AisleFormData) => {
     setIsSubmitting(true);
     try {
@@ -58,6 +62,7 @@ export function AddAisleDialog({
       });
       toast.success('Aisle created successfully');
       reset();
+      cleanupPointerEvents();
       onOpenChange(false);
       onSuccess();
     } catch (error: any) {
@@ -72,6 +77,7 @@ export function AddAisleDialog({
       onOpenChange(newOpen);
       if (!newOpen) {
         reset();
+        cleanupPointerEvents();
       }
     }
   };
