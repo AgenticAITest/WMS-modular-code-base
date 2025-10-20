@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -11,11 +11,17 @@ import {
 import { Button } from '@client/components/ui/button';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
-import { Loader2 } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@client/components/ui/popover';
+import { Loader2, ChevronsUpDown, Check, X } from 'lucide-react';
 import { binFormSchema, type BinFormData } from '../schemas/warehouseSchemas';
 import { useAuth } from '@client/provider/AuthProvider';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { cn } from '@client/lib/utils';
 
 interface AddBinDialogProps {
   open: boolean;
@@ -23,6 +29,12 @@ interface AddBinDialogProps {
   shelfId: string;
   shelfName: string;
   onSuccess: () => void;
+}
+
+interface Product {
+  id: string;
+  sku: string;
+  name: string;
 }
 
 export function AddBinDialog({
@@ -34,12 +46,17 @@ export function AddBinDialog({
 }: AddBinDialogProps) {
   const { token: accessToken } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [skuSearch, setSkuSearch] = useState('');
+  const [skuPopoverOpen, setSkuPopoverOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<BinFormData>({
     resolver: zodResolver(binFormSchema),
     defaultValues: {
@@ -54,6 +71,30 @@ export function AddBinDialog({
       shelfId,
     },
   });
+
+  useEffect(() => {
+    if (open && accessToken) {
+      fetchProducts();
+    }
+  }, [open, accessToken]);
+
+  const fetchProducts = async () => {
+    try {
+      const response = await axios.get('/api/modules/master-data/products', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { limit: 100 }
+      });
+      setProducts(response.data.data || []);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    }
+  };
+
+  const filteredProducts = products.filter(
+    (product) =>
+      product.sku.toLowerCase().includes(skuSearch.toLowerCase()) ||
+      product.name.toLowerCase().includes(skuSearch.toLowerCase())
+  ).slice(0, 10);
 
   const onSubmit = async (data: BinFormData) => {
     setIsSubmitting(true);
@@ -77,8 +118,22 @@ export function AddBinDialog({
       onOpenChange(newOpen);
       if (!newOpen) {
         reset();
+        setSelectedProduct(null);
+        setSkuSearch('');
       }
     }
+  };
+
+  const handleSelectProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setValue('fixedSku', product.sku);
+    setSkuPopoverOpen(false);
+  };
+
+  const handleClearProduct = () => {
+    setSelectedProduct(null);
+    setValue('fixedSku', '');
+    setSkuSearch('');
   };
 
   return (
@@ -146,15 +201,99 @@ export function AddBinDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="fixedSku">Fixed SKU</Label>
-            <Input
-              id="fixedSku"
-              {...register('fixedSku')}
-              placeholder="SKU-12345 (if bin is dedicated to one product)"
-            />
+            <Label>Fixed SKU</Label>
+            <input type="hidden" {...register('fixedSku')} />
+            <Popover open={skuPopoverOpen} onOpenChange={setSkuPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={skuPopoverOpen}
+                  className="w-full justify-between"
+                  type="button"
+                >
+                  {selectedProduct ? (
+                    <span className="truncate">{selectedProduct.sku} - {selectedProduct.name}</span>
+                  ) : (
+                    <span className="text-muted-foreground">Select product (optional)</span>
+                  )}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0" align="start">
+                <div className="flex items-center border-b p-2">
+                  <Input
+                    placeholder="Search by SKU or name..."
+                    value={skuSearch}
+                    onChange={(e) => setSkuSearch(e.target.value)}
+                    className="border-0 focus-visible:ring-0"
+                  />
+                  {skuSearch && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSkuSearch('')}
+                      className="h-8 w-8 p-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="max-h-60 overflow-auto">
+                  {filteredProducts.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-muted-foreground">
+                      {skuSearch ? 'No products found' : 'No products available'}
+                    </div>
+                  ) : (
+                    <div className="p-1">
+                      {filteredProducts.map((product) => (
+                        <button
+                          key={product.id}
+                          type="button"
+                          onClick={() => handleSelectProduct(product)}
+                          className={cn(
+                            "relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                            selectedProduct?.id === product.id && "bg-accent"
+                          )}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedProduct?.id === product.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex-1 text-left">
+                            <div className="font-medium">{product.sku}</div>
+                            <div className="text-xs text-muted-foreground">{product.name}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+            {selectedProduct && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Selected:</span>
+                <span className="font-medium">{selectedProduct.sku}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearProduct}
+                  className="h-6 px-2"
+                  type="button"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
             {errors.fixedSku && (
               <p className="text-sm text-destructive">{errors.fixedSku.message}</p>
             )}
+            <p className="text-xs text-muted-foreground">
+              If this bin is dedicated to one product only
+            </p>
           </div>
 
           <div className="space-y-2">
