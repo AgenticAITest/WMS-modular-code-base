@@ -717,8 +717,8 @@ router.get('/stock-information', authorized('ADMIN', 'inventory-items.view'), as
         totalAvailableQuantity: sql<number>`SUM(${inventoryItems.availableQuantity})`,
         totalReservedQuantity: sql<number>`SUM(${inventoryItems.reservedQuantity})`,
         locationCount: sql<number>`COUNT(DISTINCT ${inventoryItems.binId})`,
-        firstBinId: sql<string>`MIN(${bins.id})`,
-        firstBinName: sql<string>`MIN(${bins.name})`,
+        firstBinId: sql<string>`(array_agg(${bins.id}))[1]`,
+        firstBinName: sql<string>`(array_agg(${bins.name}))[1]`,
         earliestExpiryDate: sql<string>`MIN(${inventoryItems.expiryDate})`,
       })
       .from(inventoryItems)
