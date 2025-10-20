@@ -24,6 +24,8 @@ None specified yet
 - Rate limiting and CORS support.
 - Hierarchical Warehouse Setup: Management of Warehouses, Zones, Aisles, Shelves, and Bins with detailed configurations.
 - UX enhancements for warehouse hierarchy, including instant expansion and robust add/edit dialogs with form validation.
+- Inventory Items Management: Complete CRUD operations for inventory items with product and bin associations, batch/lot tracking, expiry dates, and cost tracking.
+- Stock Information: Aggregated view of inventory by product showing available quantities, location counts, and detailed location breakdowns via modal. Stock is managed through PO/SO workflows (to be implemented).
 
 ### System Design Choices
 - **UI/UX**: Utilizes shadcn/ui and Radix UI for a consistent and accessible component library. The warehouse hierarchy employs an accordion-based visualization for intuitive navigation and management, with instant data loading for improved user experience. **Critical Fix - Radix UI Dialog Bug**: ALL Dialog components must implement the exact pointer-events cleanup pattern shown below to prevent the "clicks disabled after closing dialog" bug (Radix UI GitHub #3445). This pattern is mandatory for all Add/Edit dialogs:
@@ -60,7 +62,7 @@ None specified yet
   };
   ```
   
-  **Currently Fixed Dialogs**: AddWarehouseDialog, AddZoneDialog, AddAisleDialog, AddShelfDialog, AddBinDialog, EditWarehouseDialog, EditZoneDialog, EditAisleDialog, EditShelfDialog, EditBinDialog. Reference these files when creating new dialogs.
+  **Currently Fixed Dialogs**: AddWarehouseDialog, AddZoneDialog, AddAisleDialog, AddShelfDialog, AddBinDialog, EditWarehouseDialog, EditZoneDialog, EditAisleDialog, EditShelfDialog, EditBinDialog, ViewStockDetailsDialog. Reference these files when creating new dialogs.
 - **Backend**: Employs a modular structure for features, with dedicated modules for system, master-data, and warehouse-setup. API endpoints follow a clear naming convention and support multi-tenant isolation. Database transactions are used for atomic operations, such as creating a warehouse and its configuration simultaneously.
 - **Database Schema**: Designed with a clear separation between system, master data, and warehouse-specific tables. Key relationships ensure data integrity and support multi-tenancy across all modules. Geolocation support is included for supplier and customer locations.
 - **Authentication**: JWT-based authentication for secure access, with separate tokens for access, refresh, and password reset.
