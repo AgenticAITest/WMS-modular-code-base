@@ -97,6 +97,7 @@ export const WarehouseHierarchyView = () => {
     if (!accessToken) return;
     
     try {
+      await new Promise(resolve => setTimeout(resolve, 100));
       const response = await axios.get('/api/modules/warehouse-setup/warehouses', {
         headers: { Authorization: `Bearer ${accessToken}` },
         params: { limit: 100, includeHierarchy: true }

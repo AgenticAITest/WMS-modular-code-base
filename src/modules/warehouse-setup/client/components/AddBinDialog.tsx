@@ -47,6 +47,7 @@ export function AddBinDialog({
   const { token: accessToken } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
   const [skuSearch, setSkuSearch] = useState('');
   const [skuPopoverOpen, setSkuPopoverOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -80,6 +81,7 @@ export function AddBinDialog({
 
   const fetchProducts = async () => {
     try {
+      setLoadingProducts(true);
       const response = await axios.get('/api/modules/master-data/products', {
         headers: { Authorization: `Bearer ${accessToken}` },
         params: { limit: 100 }
@@ -87,6 +89,8 @@ export function AddBinDialog({
       setProducts(response.data.data || []);
     } catch (error) {
       console.error('Error fetching products:', error);
+    } finally {
+      setLoadingProducts(false);
     }
   };
 
@@ -120,6 +124,8 @@ export function AddBinDialog({
         reset();
         setSelectedProduct(null);
         setSkuSearch('');
+        setProducts([]);
+        setLoadingProducts(false);
       }
     }
   };
@@ -240,7 +246,12 @@ export function AddBinDialog({
                   )}
                 </div>
                 <div className="max-h-60 overflow-auto">
-                  {filteredProducts.length === 0 ? (
+                  {loadingProducts ? (
+                    <div className="p-4 flex items-center justify-center">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      <span className="ml-2 text-sm text-muted-foreground">Loading products...</span>
+                    </div>
+                  ) : filteredProducts.length === 0 ? (
                     <div className="p-4 text-center text-sm text-muted-foreground">
                       {skuSearch ? 'No products found' : 'No products available'}
                     </div>
