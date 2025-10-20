@@ -16,21 +16,30 @@ import { AddZoneDialog } from './AddZoneDialog';
 import { AddAisleDialog } from './AddAisleDialog';
 import { AddShelfDialog } from './AddShelfDialog';
 import { AddBinDialog } from './AddBinDialog';
+import { EditWarehouseDialog } from './EditWarehouseDialog';
+import { EditZoneDialog } from './EditZoneDialog';
+import { EditAisleDialog } from './EditAisleDialog';
+import { EditShelfDialog } from './EditShelfDialog';
+import { EditBinDialog } from './EditBinDialog';
 
 interface Bin {
   id: string;
   name: string;
   barcode: string | null;
   category: string | null;
-  maxWeight: number | null;
-  maxVolume: number | null;
-  accessibilityScore: number | null;
+  maxWeight: string | null;
+  maxVolume: string | null;
+  accessibilityScore: number;
+  fixedSku: string | null;
+  requiredTemperature: string | null;
+  shelfId: string;
 }
 
 interface Shelf {
   id: string;
   name: string;
   description: string | null;
+  aisleId: string;
   bins?: Bin[];
 }
 
@@ -38,6 +47,7 @@ interface Aisle {
   id: string;
   name: string;
   description: string | null;
+  zoneId: string;
   shelves?: Shelf[];
 }
 
@@ -45,6 +55,7 @@ interface Zone {
   id: string;
   name: string;
   description: string | null;
+  warehouseId: string;
   aisles?: Aisle[];
 }
 
@@ -53,6 +64,10 @@ interface WarehouseType {
   name: string;
   address: string | null;
   isActive: boolean;
+  pickingStrategy: string;
+  autoAssignBins: boolean;
+  requireBatchTracking: boolean;
+  requireExpiryTracking: boolean;
   zones?: Zone[];
 }
 
@@ -72,10 +87,22 @@ export const WarehouseHierarchyView = () => {
   const [shelfDialogOpen, setShelfDialogOpen] = useState(false);
   const [binDialogOpen, setBinDialogOpen] = useState(false);
 
+  const [editWarehouseDialogOpen, setEditWarehouseDialogOpen] = useState(false);
+  const [editZoneDialogOpen, setEditZoneDialogOpen] = useState(false);
+  const [editAisleDialogOpen, setEditAisleDialogOpen] = useState(false);
+  const [editShelfDialogOpen, setEditShelfDialogOpen] = useState(false);
+  const [editBinDialogOpen, setEditBinDialogOpen] = useState(false);
+
   const [selectedWarehouse, setSelectedWarehouse] = useState<{ id: string; name: string } | null>(null);
   const [selectedZone, setSelectedZone] = useState<{ id: string; name: string } | null>(null);
   const [selectedAisle, setSelectedAisle] = useState<{ id: string; name: string } | null>(null);
   const [selectedShelf, setSelectedShelf] = useState<{ id: string; name: string } | null>(null);
+
+  const [editingWarehouse, setEditingWarehouse] = useState<WarehouseType | null>(null);
+  const [editingZone, setEditingZone] = useState<Zone | null>(null);
+  const [editingAisle, setEditingAisle] = useState<Aisle | null>(null);
+  const [editingShelf, setEditingShelf] = useState<Shelf | null>(null);
+  const [editingBin, setEditingBin] = useState<Bin | null>(null);
 
   const fetchWarehouses = async () => {
     if (!accessToken) return;
@@ -196,7 +223,12 @@ export const WarehouseHierarchyView = () => {
                           <Plus className="h-4 w-4 mr-2" />
                           Add Zone
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setEditingWarehouse(warehouse);
+                            setEditWarehouseDialogOpen(true);
+                          }}
+                        >
                           <Edit className="h-4 w-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
@@ -252,7 +284,12 @@ export const WarehouseHierarchyView = () => {
                                     <Plus className="h-4 w-4 mr-2" />
                                     Add Aisle
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setEditingZone(zone);
+                                      setEditZoneDialogOpen(true);
+                                    }}
+                                  >
                                     <Edit className="h-4 w-4 mr-2" />
                                     Edit
                                   </DropdownMenuItem>
@@ -308,7 +345,12 @@ export const WarehouseHierarchyView = () => {
                                               <Plus className="h-4 w-4 mr-2" />
                                               Add Shelf
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem>
+                                            <DropdownMenuItem
+                                              onClick={() => {
+                                                setEditingAisle(aisle);
+                                                setEditAisleDialogOpen(true);
+                                              }}
+                                            >
                                               <Edit className="h-4 w-4 mr-2" />
                                               Edit
                                             </DropdownMenuItem>
@@ -364,7 +406,12 @@ export const WarehouseHierarchyView = () => {
                                                         <Plus className="h-4 w-4 mr-2" />
                                                         Add Bin
                                                       </DropdownMenuItem>
-                                                      <DropdownMenuItem>
+                                                      <DropdownMenuItem
+                                                        onClick={() => {
+                                                          setEditingShelf(shelf);
+                                                          setEditShelfDialogOpen(true);
+                                                        }}
+                                                      >
                                                         <Edit className="h-4 w-4 mr-2" />
                                                         Edit
                                                       </DropdownMenuItem>
@@ -406,7 +453,12 @@ export const WarehouseHierarchyView = () => {
                                                             </Button>
                                                           </DropdownMenuTrigger>
                                                           <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                              onClick={() => {
+                                                                setEditingBin(bin);
+                                                                setEditBinDialogOpen(true);
+                                                              }}
+                                                            >
                                                               <Edit className="h-4 w-4 mr-2" />
                                                               Edit
                                                             </DropdownMenuItem>
@@ -487,6 +539,41 @@ export const WarehouseHierarchyView = () => {
           onSuccess={refreshWarehouses}
         />
       )}
+
+      <EditWarehouseDialog
+        open={editWarehouseDialogOpen}
+        onOpenChange={setEditWarehouseDialogOpen}
+        warehouse={editingWarehouse}
+        onSuccess={refreshWarehouses}
+      />
+
+      <EditZoneDialog
+        open={editZoneDialogOpen}
+        onOpenChange={setEditZoneDialogOpen}
+        zone={editingZone}
+        onSuccess={refreshWarehouses}
+      />
+
+      <EditAisleDialog
+        open={editAisleDialogOpen}
+        onOpenChange={setEditAisleDialogOpen}
+        aisle={editingAisle}
+        onSuccess={refreshWarehouses}
+      />
+
+      <EditShelfDialog
+        open={editShelfDialogOpen}
+        onOpenChange={setEditShelfDialogOpen}
+        shelf={editingShelf}
+        onSuccess={refreshWarehouses}
+      />
+
+      <EditBinDialog
+        open={editBinDialogOpen}
+        onOpenChange={setEditBinDialogOpen}
+        bin={editingBin}
+        onSuccess={refreshWarehouses}
+      />
     </div>
   );
 };
