@@ -10,6 +10,7 @@ import masterDataRoutes from '../modules/master-data/server/routes/masterDataRou
 import warehouseSetupRoutes from '../modules/warehouse-setup/server/routes/warehouseSetupRoutes';
 import warehouseRoutes from '../modules/warehouse-setup/server/routes/warehouseRoutes';
 import zoneRoutes from '../modules/warehouse-setup/server/routes/zoneRoutes';
+import inventoryItemsRoutes from '../modules/inventory-items/server/routes/inventoryItemsRoutes';
 import ViteExpress from "vite-express";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -105,6 +106,9 @@ app.use('/api/modules/master-data', masterDataRoutes);
 app.use('/api/modules/warehouse-setup', warehouseSetupRoutes);
 app.use('/api/modules/warehouse-setup', warehouseRoutes);
 app.use('/api/modules/warehouse-setup', zoneRoutes);
+
+// inventory-items routes
+app.use('/api/modules/inventory-items', inventoryItemsRoutes);
 
 ViteExpress.listen(app, 5000, () =>
   console.log("Server is listening on port 5000..."),

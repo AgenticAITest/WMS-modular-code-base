@@ -20,6 +20,7 @@ import { sampleModuleSidebarMenus } from "../../modules/sample-module/client/men
 
 import { masterDataSidebarMenus } from "../../modules/master-data/client/menus/sideBarMenus"
 import { warehouseSetupSidebarMenus } from "../../modules/warehouse-setup/client/menus/sideBarMenus"
+import { inventoryItemsSidebarMenus } from "../../modules/inventory-items/client/menus/sideBarMenus"
 // This is sample data.
 const data = {
   // teams: [
@@ -138,6 +139,10 @@ const data = {
     masterDataSidebarMenus,
 
     warehouseSetupSidebarMenus,
+
+
+    inventoryItemsSidebarMenus,
+
 
 
     sampleModuleSidebarMenus,
