@@ -58,10 +58,24 @@ export function AddWarehouseDialog({ open, onOpenChange, onSuccess }: AddWarehou
   });
 
   useEffect(() => {
-    if (!open && cleanupTimerRef.current) {
+    if (cleanupTimerRef.current) {
       clearTimeout(cleanupTimerRef.current);
       cleanupTimerRef.current = null;
     }
+
+    if (!open) {
+      cleanupTimerRef.current = setTimeout(() => {
+        document.body.style.pointerEvents = '';
+        cleanupTimerRef.current = null;
+      }, 100);
+    }
+
+    return () => {
+      if (cleanupTimerRef.current) {
+        clearTimeout(cleanupTimerRef.current);
+        cleanupTimerRef.current = null;
+      }
+    };
   }, [open]);
 
   const isActive = watch('isActive');
@@ -70,13 +84,7 @@ export function AddWarehouseDialog({ open, onOpenChange, onSuccess }: AddWarehou
   const requireExpiryTracking = watch('requireExpiryTracking');
 
   const cleanupPointerEvents = () => {
-    if (cleanupTimerRef.current) {
-      clearTimeout(cleanupTimerRef.current);
-    }
-    cleanupTimerRef.current = setTimeout(() => {
-      document.body.style.pointerEvents = '';
-      cleanupTimerRef.current = null;
-    }, 100);
+    document.body.style.pointerEvents = '';
   };
 
   const onSubmit = async (data: WarehouseFormData) => {
