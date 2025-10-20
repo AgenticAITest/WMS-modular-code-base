@@ -93,6 +93,20 @@ export const WarehouseHierarchyView = () => {
     }
   };
 
+  const refreshWarehouses = async () => {
+    if (!accessToken) return;
+    
+    try {
+      const response = await axios.get('/api/modules/warehouse-setup/warehouses', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { limit: 100, includeHierarchy: true }
+      });
+      setWarehouses(response.data.data || []);
+    } catch (error: any) {
+      console.error('Error fetching warehouses:', error);
+    }
+  };
+
   useEffect(() => {
     fetchWarehouses();
   }, [accessToken]);
@@ -428,7 +442,7 @@ export const WarehouseHierarchyView = () => {
       <AddWarehouseDialog
         open={warehouseDialogOpen}
         onOpenChange={setWarehouseDialogOpen}
-        onSuccess={fetchWarehouses}
+        onSuccess={refreshWarehouses}
       />
 
       {selectedWarehouse && (
@@ -437,7 +451,7 @@ export const WarehouseHierarchyView = () => {
           onOpenChange={setZoneDialogOpen}
           warehouseId={selectedWarehouse.id}
           warehouseName={selectedWarehouse.name}
-          onSuccess={fetchWarehouses}
+          onSuccess={refreshWarehouses}
         />
       )}
 
@@ -447,7 +461,7 @@ export const WarehouseHierarchyView = () => {
           onOpenChange={setAisleDialogOpen}
           zoneId={selectedZone.id}
           zoneName={selectedZone.name}
-          onSuccess={fetchWarehouses}
+          onSuccess={refreshWarehouses}
         />
       )}
 
@@ -457,7 +471,7 @@ export const WarehouseHierarchyView = () => {
           onOpenChange={setShelfDialogOpen}
           aisleId={selectedAisle.id}
           aisleName={selectedAisle.name}
-          onSuccess={fetchWarehouses}
+          onSuccess={refreshWarehouses}
         />
       )}
 
@@ -467,7 +481,7 @@ export const WarehouseHierarchyView = () => {
           onOpenChange={setBinDialogOpen}
           shelfId={selectedShelf.id}
           shelfName={selectedShelf.name}
-          onSuccess={fetchWarehouses}
+          onSuccess={refreshWarehouses}
         />
       )}
     </div>
