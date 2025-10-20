@@ -137,17 +137,3 @@
         }
 }
 
-/* Fix for Radix UI Dialog overlay blocking clicks after close */
-[data-radix-portal] {
-        pointer-events: none;
-}
-
-[data-radix-portal] > * {
-        pointer-events: auto;
-}
-
-/* Ensure closed Dialog overlays and content don't block - narrowly scoped to Dialog only */
-[data-slot="dialog-overlay"][data-state="closed"],
-[data-slot="dialog-content"][data-state="closed"] {
-        pointer-events: none !important;
-}
