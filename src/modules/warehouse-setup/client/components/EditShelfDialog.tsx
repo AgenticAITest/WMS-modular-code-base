@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -38,6 +38,7 @@ export function EditShelfDialog({
 }: EditShelfDialogProps) {
   const { token: accessToken } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const cleanupTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     register,
@@ -62,8 +63,21 @@ export function EditShelfDialog({
     }
   }, [shelf, open, setValue]);
 
+  useEffect(() => {
+    if (!open && cleanupTimerRef.current) {
+      clearTimeout(cleanupTimerRef.current);
+      cleanupTimerRef.current = null;
+    }
+  }, [open]);
+
   const cleanupPointerEvents = () => {
-    document.body.style.pointerEvents = '';
+    if (cleanupTimerRef.current) {
+      clearTimeout(cleanupTimerRef.current);
+    }
+    cleanupTimerRef.current = setTimeout(() => {
+      document.body.style.pointerEvents = '';
+      cleanupTimerRef.current = null;
+    }, 100);
   };
 
   const onSubmit = async (data: ShelfFormData) => {
