@@ -11,7 +11,14 @@ A comprehensive admin dashboard built with React, TypeScript, Vite, and Drizzle 
 - ✅ Development workflow set up
 - ✅ Deployment configuration ready
 
-## Recent Changes (October 19, 2025)
+## Recent Changes (October 20, 2025)
+- **Critical UX Fixes for Warehouse Hierarchy:**
+  - Fixed button inactive issue: Created separate `refreshWarehouses()` function that updates data without triggering loading state, preventing accordion unmount/remount that caused buttons to become non-interactive after adding entities or canceling dialogs
+  - Enhanced Add Bin dialog: Replaced Fixed SKU text input with searchable dropdown that fetches products from master-data API, displays max 10 filtered results, and prevents SKU mistyping
+  - Searchable dropdown features: Real-time search by SKU or product name, shows product name alongside SKU, clear button, proper empty state handling
+  - All changes architect-verified with zero LSP errors and production-ready implementation
+
+## Previous Changes (October 19, 2025)
 - **Warehouse Creation with Configuration (Latest):**
   - Updated Add Warehouse dialog to create both warehouse and warehouse_config records atomically
   - Backend API now uses database transactions to ensure both records are created together or rolled back
