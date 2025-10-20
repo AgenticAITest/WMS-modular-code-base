@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -34,6 +34,7 @@ interface AddWarehouseDialogProps {
 export function AddWarehouseDialog({ open, onOpenChange, onSuccess }: AddWarehouseDialogProps) {
   const { token: accessToken } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const cleanupTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     register,
@@ -56,13 +57,26 @@ export function AddWarehouseDialog({ open, onOpenChange, onSuccess }: AddWarehou
     },
   });
 
+  useEffect(() => {
+    if (!open && cleanupTimerRef.current) {
+      clearTimeout(cleanupTimerRef.current);
+      cleanupTimerRef.current = null;
+    }
+  }, [open]);
+
   const isActive = watch('isActive');
   const autoAssignBins = watch('autoAssignBins');
   const requireBatchTracking = watch('requireBatchTracking');
   const requireExpiryTracking = watch('requireExpiryTracking');
 
   const cleanupPointerEvents = () => {
-    document.body.style.pointerEvents = '';
+    if (cleanupTimerRef.current) {
+      clearTimeout(cleanupTimerRef.current);
+    }
+    cleanupTimerRef.current = setTimeout(() => {
+      document.body.style.pointerEvents = '';
+      cleanupTimerRef.current = null;
+    }, 100);
   };
 
   const onSubmit = async (data: WarehouseFormData) => {
