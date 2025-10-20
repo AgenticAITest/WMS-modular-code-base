@@ -1,240 +1,38 @@
 # React Admin - Warehouse Management System
 
 ## Overview
-A comprehensive admin dashboard built with React, TypeScript, Vite, and Drizzle ORM. This application provides a modular, scalable foundation for managing users, roles, permissions, and multi-tenant organizations with authentication and authorization features.
+This project is a comprehensive admin dashboard built with React, TypeScript, Vite, and Drizzle ORM. Its primary purpose is to provide a modular and scalable foundation for warehouse management, including features for managing users, roles, permissions, and multi-tenant organizations with robust authentication and authorization. The system aims to streamline warehouse operations, from product and inventory type management to detailed hierarchical setup of warehouses, zones, aisles, shelves, and bins.
 
-## Current State
-- ✅ Successfully imported and configured for Replit environment
-- ✅ PostgreSQL database created and seeded
-- ✅ Frontend and backend running on port 5000
-- ✅ JWT authentication configured
-- ✅ Development workflow set up
-- ✅ Deployment configuration ready
+## User Preferences
+None specified yet
 
-## Recent Changes (October 20, 2025)
-- **Critical UX Fixes for Warehouse Hierarchy:**
-  - Fixed button inactive issue: Created separate `refreshWarehouses()` function that updates data without triggering loading state, preventing accordion unmount/remount that caused buttons to become non-interactive after adding entities or canceling dialogs
-  - Enhanced Add Bin dialog: Replaced Fixed SKU text input with searchable dropdown that fetches products from master-data API, displays max 10 filtered results, and prevents SKU mistyping
-  - Searchable dropdown features: Real-time search by SKU or product name, shows product name alongside SKU, clear button, proper empty state handling
-  - All changes architect-verified with zero LSP errors and production-ready implementation
-
-## Previous Changes (October 19, 2025)
-- **Warehouse Creation with Configuration (Latest):**
-  - Updated Add Warehouse dialog to create both warehouse and warehouse_config records atomically
-  - Backend API now uses database transactions to ensure both records are created together or rolled back
-  - Added warehouse configuration fields to the form:
-    - Picking Strategy dropdown (FIFO, FEFO, LIFO)
-    - Auto-assign Bins toggle
-    - Batch Tracking toggle
-    - Expiry Tracking toggle
-  - Enhanced Zod schema to validate all warehouse config fields
-  - Default values match database defaults (FEFO strategy, auto-assign enabled, expiry tracking enabled)
-  - Proper transaction handling ensures no orphaned warehouse records without configuration
-  - Architect-verified implementation with atomic database operations
-- **Warehouse Hierarchy Add Dialogs Completed:**
-  - Created 5 fully functional add dialogs (Warehouse, Zone, Aisle, Shelf, Bin)
-  - Implemented Zod validation schemas matching database table structures
-  - Integrated React Hook Form with proper validation and error handling
-  - Fixed critical authentication issue - all dialogs now include Bearer token in POST requests
-  - Implemented token-aware data fetching - hierarchy refetches when auth token becomes available
-  - All add buttons throughout hierarchy open appropriate modals and successfully create entities
-  - Success callbacks refresh entire hierarchy to display newly created entities
-  - Comprehensive form fields including optional numeric values (dimensions, temperature, weight)
-  - Proper loading states during submission and error handling with toast notifications
-  - Architect-verified implementation ready for production use
-- **Warehouse Hierarchy UX Optimization:**
-  - **Instant Expansion:** Optimized for SME/SMB warehouses - full hierarchy now loads in single API call
-  - Backend: Added `?includeHierarchy=true` query parameter to GET /warehouses endpoint
-  - Frontend: Removed lazy-loading, all data pre-loaded at page mount for instant accordion expansion
-  - Fixed critical nested button bug by repositioning dropdown menus outside AccordionTriggers
-  - Eliminated "No data" flash and API calls on expansion - smooth, immediate UX
-  - Clean code: Removed all debug console.log statements and lazy-loading handlers
-  - Zero console errors, architect-verified implementation
-- **Warehouse Hierarchy Accordion UI Completed and Working:**
-  - Created WarehouseHierarchyView component with nested accordion visualization
-  - Implemented 5-level hierarchical display: Warehouse → Zone → Aisle → Shelf → Bin
-  - Visual hierarchy with icons (Warehouse, MapPin, Grid3x3, Layers, Package) and color-coded badges
-  - Context menu with Add/Edit/Delete actions for each hierarchy level (handlers ready for implementation)
-  - Removed old tab-based UI, replaced with single accordion view
-  - Added shadcn/ui Accordion component to UI components library
-  - Fixed module authorization for warehouse-setup module
-  - Fixed tenant_id mismatch in seeded warehouse data
-  - UI fully functional with test data displaying correctly
-- **Warehouse Setup CRUD APIs Completed:**
-  - Implemented full CRUD operations for all 6 warehouse entities (warehouses, warehouse_configs, zones, aisles, shelves, bins)
-  - Created 30 API endpoints with complete Swagger documentation
-  - All endpoints support multi-tenant isolation and proper authentication/authorization
-  - Hierarchical queries support filtering by parent entity (e.g., zones by warehouseId, bins by shelfId)
-  - Created seed script to populate test data following correct hierarchical structure
-  - Test data successfully seeded: 1 warehouse, 1 config, 3 zones, 3 aisles, 4 shelves, 6 bins
-  - All APIs verified and accessible via /api-docs
-- **Warehouse Setup Module Enhanced:**
-  - Added "Warehouse setup" submenu under "Warehouse Setup" parent menu
-  - Created WarehouseSetupManagement page with 4-tab structure (Warehouses, Zones, Locations, Storage Types)
-  - Implemented comprehensive warehouse database schema with 6 tables
-  - All tables support multi-tenant architecture with proper foreign key relationships
-  - Hierarchical structure: Warehouses → Zones → Aisles → Shelves → Bins
-  - Schema successfully pushed to database
-
-## Previous Changes (October 14, 2025)
-- **Customer and Supplier CRUD APIs Implemented:**
-  - Created full CRUD APIs for suppliers and customers in master-data module
-  - Implemented nested location management (one supplier/customer → multiple locations)
-  - POST/PUT operations handle master record + locations in single request
-  - GET by ID returns supplier/customer with all locations included
-  - DELETE operations cascade to remove all related locations
-  - Added Swagger documentation for all 10 new endpoints
-  - Supports pagination, search, and tenant isolation
-- **Customer and Supplier Schema Implementation:**
-  - Added 4 new database tables: suppliers, supplier_locations, customers, customer_locations
-  - Implemented in master-data module following modular architecture pattern
-  - Added multi-tenant support with proper foreign key relationships
-  - Unique indexes on (tenant_id, name) for suppliers and customers
-  - Location tracking with geolocation support (latitude/longitude)
-  - Schema pushed to database successfully
-- **Master Data Management Module Implemented:**
-  - Created comprehensive Master Data Management page with 6-tab structure
-  - Built 3 functional tabs with full CRUD operations (Product, Inventory Type, Package Type)
-  - Added 3 placeholder tabs for future development (Supplier, Customer, Number)
-  - Implemented data tables with search, pagination, and sorting
-  - Created Add/Edit dialogs with form validation using React Hook Form and Zod
-  - Fixed numeric field handling to properly transform NaN to undefined
-  - Integrated with existing authentication and API systems
-- Configured Swagger documentation with absolute paths (65 API endpoints documented)
-- Configured Vite server to bind to 0.0.0.0:5000 for Replit proxy compatibility
-- Added Express trust proxy configuration for rate limiting
-- Set up PostgreSQL database with Drizzle ORM
-- Seeded database with initial tenant, user, roles, and permissions
-- Configured JWT secrets for authentication
-- Set up development workflow with nodemon and vite-express
-- Configured autoscale deployment
-
-## Project Architecture
+## System Architecture
 
 ### Tech Stack
-- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS
+- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, Radix UI, shadcn/ui components
 - **Backend**: Node.js, Express, vite-express
 - **Database**: PostgreSQL with Drizzle ORM
 - **Authentication**: JWT (Access, Refresh, Reset tokens)
-- **UI Components**: Radix UI, shadcn/ui components
 
 ### Key Features
 - Multi-tenant architecture
-- Role-based access control (RBAC)
-- Permission-based authorization
-- User management system
-- Master Data Management:
-  - Product/Inventory Item management
-  - Inventory Type classification
-  - Package Type configuration
-  - Full CRUD operations with validation
-- Modular page structure
-- API documentation with Swagger
-- Rate limiting and CORS support
-- File upload support
+- Role-based access control (RBAC) and Permission-based authorization
+- User management
+- Master Data Management: Product, Inventory Type, Package Type, Supplier, and Customer CRUD operations with validation.
+- Modular page structure for extensibility.
+- Comprehensive API documentation with Swagger.
+- Rate limiting and CORS support.
+- Hierarchical Warehouse Setup: Management of Warehouses, Zones, Aisles, Shelves, and Bins with detailed configurations.
+- UX enhancements for warehouse hierarchy, including instant expansion and robust add/edit dialogs with form validation.
 
-### Project Structure
-```
-├── src/
-│   ├── client/              # Frontend React application
-│   │   ├── components/      # UI components
-│   │   ├── pages/          # Application pages
-│   │   ├── provider/       # Auth and theme providers
-│   │   └── hooks/          # Custom React hooks
-│   ├── server/             # Backend Express application
-│   │   ├── lib/db/         # Database schema and utilities
-│   │   ├── middleware/     # Express middleware
-│   │   ├── routes/         # API routes
-│   │   └── schemas/        # Validation schemas
-│   └── modules/            # Modular feature extensions
-├── public/                 # Static assets
-└── drizzle/               # Database migrations
-```
+### System Design Choices
+- **UI/UX**: Utilizes shadcn/ui and Radix UI for a consistent and accessible component library. The warehouse hierarchy employs an accordion-based visualization for intuitive navigation and management, with instant data loading for improved user experience.
+- **Backend**: Employs a modular structure for features, with dedicated modules for system, master-data, and warehouse-setup. API endpoints follow a clear naming convention and support multi-tenant isolation. Database transactions are used for atomic operations, such as creating a warehouse and its configuration simultaneously.
+- **Database Schema**: Designed with a clear separation between system, master data, and warehouse-specific tables. Key relationships ensure data integrity and support multi-tenancy across all modules. Geolocation support is included for supplier and customer locations.
+- **Authentication**: JWT-based authentication for secure access, with separate tokens for access, refresh, and password reset.
+- **Development Workflow**: Set up for a streamlined development process using Vite for bundling, nodemon for backend auto-restarts, and Drizzle Kit for database schema management.
 
-### Database Schema
-
-**System Tables:**
-- **sys_tenant**: Multi-tenant organization management
-- **sys_user**: User accounts and credentials
-- **sys_role**: Role definitions
-- **sys_permission**: Permission definitions
-- **sys_user_role**: User-role mappings
-- **sys_role_permission**: Role-permission mappings
-- **sys_module_registry**: Module registration system
-- **sys_module_auth**: Module authorization per tenant
-
-**Master Data Tables:**
-- **product_types**: Inventory type categories (name, description, category, status)
-- **package_types**: Package configurations (name, description, units, barcode, dimensions, weight)
-- **products**: Inventory items (SKU, name, type, package, stock levels, expiry, temperature range)
-- **suppliers**: Supplier master data (name, contact person, email, phone, tax ID)
-- **supplier_locations**: Supplier location details (pickup/billing addresses, geolocation, contact info)
-- **customers**: Customer master data (name, contact person, email, phone, tax ID)
-- **customer_locations**: Customer location details (billing/shipping addresses, geolocation, contact info)
-
-**Warehouse Setup Tables:**
-- **warehouses**: Main warehouse entities (name, address, active status)
-- **warehouse_configs**: Warehouse configuration settings (picking strategy: FIFO/FEFO/LIFO, batch tracking, expiry tracking)
-- **zones**: Warehouse zones/areas within each warehouse (name, description)
-- **aisles**: Aisles within zones (name, description)
-- **shelves**: Shelves within aisles (name, description)
-- **bins**: Storage bins within shelves (name, barcode, max weight/volume, fixed SKU, temperature requirements, accessibility score)
-
-### Environment Configuration
-Required secrets (already configured):
-- `DATABASE_URL`: PostgreSQL connection (auto-configured by Replit)
-- `ACCESS_TOKEN_SECRET`: JWT access token secret
-- `REFRESH_TOKEN_SECRET`: JWT refresh token secret
-- `RESET_PASSWORD_TOKEN_SECRET`: Password reset token secret
-
-Optional configuration:
-- SMTP settings for email functionality (in .env.example)
-
-### API Endpoints
-- `/api/auth/*` - Authentication (login, register)
-- `/api/system/user` - User management
-- `/api/system/role` - Role management
-- `/api/system/permission` - Permission management
-- `/api/system/tenant` - Tenant management
-- `/api/system/module-registry` - Module registry
-- `/api/system/module-authorization` - Module authorization
-- `/api/modules/master-data/product-types` - Inventory types CRUD
-- `/api/modules/master-data/package-types` - Package types CRUD
-- `/api/modules/master-data/products` - Products CRUD
-- `/api/modules/master-data/suppliers` - Suppliers CRUD with nested locations
-- `/api/modules/master-data/customers` - Customers CRUD with nested locations
-- `/api/modules/warehouse-setup/warehouses` - Warehouses CRUD
-- `/api/modules/warehouse-setup/warehouse-configs` - Warehouse configs CRUD
-- `/api/modules/warehouse-setup/zones` - Zones CRUD (filter by warehouseId)
-- `/api/modules/warehouse-setup/aisles` - Aisles CRUD (filter by zoneId)
-- `/api/modules/warehouse-setup/shelves` - Shelves CRUD (filter by aisleId)
-- `/api/modules/warehouse-setup/bins` - Bins CRUD (filter by shelfId)
-- `/api-docs` - Swagger UI documentation (105 endpoints)
-
-### Default Login Credentials
-After database seeding, you can login with:
-- **Username**: `sysadmin@system.tenant` (format: username@tenant.domain)
-- **Password**: `S3cr3T`
-- **Role**: System Admin
-
-## Development Workflow
-- **Start dev server**: `npm run dev` (auto-runs via workflow)
-- **Build frontend**: `npm run build`
-- **Database push**: `npm run db:push` (sync schema changes)
-- **Database seed**: `npm run db:seed` (reset and seed data)
-- **Create module**: `npm run create-module` (scaffold new module)
-
-## Deployment
-- **Target**: Autoscale (stateless web application)
-- **Build**: `npm run build`
-- **Run**: `npm run start` (production mode)
-
-## User Preferences
-- None specified yet
-
-## Notes
-- The application uses vite-express to serve both frontend and backend on the same port (5000)
-- Trust proxy is enabled for Replit's proxy environment
-- Rate limiting is configured for API protection
-- Database migrations are managed through Drizzle Kit
-- The application supports modular architecture for extensibility
+## External Dependencies
+- **PostgreSQL**: Primary database for all application data, managed via Drizzle ORM.
+- **Swagger UI**: For interactive API documentation, accessible at `/api-docs`.
+- **Replit**: The deployment environment; configured for PostgreSQL integration, trusted proxy, and port `5000` binding.
