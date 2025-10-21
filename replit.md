@@ -6,6 +6,13 @@ This project is a comprehensive admin dashboard built with React, TypeScript, Vi
 ## User Preferences
 None specified yet
 
+## Data Model Clarification - CRITICAL
+**Products vs Inventory Items:**
+- **`products` table**: Master SKU list defining what types of SKUs the warehouse CAN store. This is the product catalog/master data.
+- **`inventory_items` table**: Actual stock information showing what the warehouse HAS in stock right now. This includes quantities, locations, batches, etc.
+
+**Important**: When creating Purchase Orders (PO), the SKU selection should ALWAYS query the `inventory_items` table, NOT the `products` table. This shows items already in the warehouse system that need reordering.
+
 ## System Architecture
 
 ### Tech Stack

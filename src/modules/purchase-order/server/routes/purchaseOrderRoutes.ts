@@ -110,7 +110,7 @@ router.use(checkModuleAuthorization('purchase-order'));
  * @swagger
  * /api/modules/purchase-order/products-with-stock:
  *   get:
- *     summary: Get all products with aggregated stock information for PO creation
+ *     summary: Get inventory items with stock information for PO creation
  *     tags: [Purchase Orders]
  *     security:
  *       - bearerAuth: []
@@ -131,7 +131,7 @@ router.use(checkModuleAuthorization('purchase-order'));
  *           type: string
  *     responses:
  *       200:
- *         description: List of products with stock information
+ *         description: List of inventory items with stock information
  *       401:
  *         description: Unauthorized
  */
@@ -143,8 +143,8 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
     const search = req.query.search as string;
     const offset = (page - 1) * limit;
 
-    // Build where conditions
-    const whereConditions = [eq(products.tenantId, tenantId)];
+    // Build where conditions for inventory items
+    const whereConditions = [eq(inventoryItems.tenantId, tenantId)];
     
     if (search) {
       whereConditions.push(
@@ -155,13 +155,14 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
       );
     }
 
-    // Get total count of products
+    // Get total count of unique products in inventory
     const [totalResult] = await db
-      .select({ count: count() })
-      .from(products)
+      .select({ count: sql<number>`COUNT(DISTINCT ${inventoryItems.productId})` })
+      .from(inventoryItems)
+      .innerJoin(products, eq(inventoryItems.productId, products.id))
       .where(and(...whereConditions));
 
-    // Get products with aggregated stock
+    // Get inventory items grouped by product with aggregated stock
     const data = await db
       .select({
         productId: products.id,
@@ -170,39 +171,30 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
         minimumStockLevel: products.minimumStockLevel,
         totalAvailableStock: sql<number>`COALESCE(SUM(${inventoryItems.availableQuantity}), 0)`,
       })
-      .from(products)
-      .leftJoin(
-        inventoryItems,
-        and(
-          eq(products.id, inventoryItems.productId),
-          eq(inventoryItems.tenantId, tenantId)
-        )
-      )
+      .from(inventoryItems)
+      .innerJoin(products, eq(inventoryItems.productId, products.id))
       .where(and(...whereConditions))
       .groupBy(products.id, products.sku, products.name, products.minimumStockLevel)
-      .orderBy(products.name)
+      .orderBy(products.sku)
       .limit(limit)
       .offset(offset);
 
-    const totalPages = Math.ceil(totalResult.count / limit);
-
     res.json({
       success: true,
-      data,
+      data: data,
       pagination: {
         page,
         limit,
-        total: totalResult.count,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1,
-      },
+        total: totalResult.count || 0,
+        totalPages: Math.ceil((totalResult.count || 0) / limit)
+      }
     });
-  } catch (error) {
-    console.error('Error fetching products with stock:', error);
+  } catch (error: any) {
+    console.error('Error fetching inventory items:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
+      message: 'Failed to fetch inventory items',
+      error: error.message
     });
   }
 });
