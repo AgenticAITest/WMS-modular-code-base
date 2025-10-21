@@ -6,6 +6,32 @@ This project is a comprehensive admin dashboard built with React, TypeScript, Vi
 ## User Preferences
 None specified yet
 
+## ⚠️ CRITICAL: Database Seed Scripts - Data Loss Warning
+
+**DANGER**: The seed scripts in this project are **DESTRUCTIVE** and will **DELETE ALL YOUR DATA**. Only run them during initial project setup!
+
+### What Gets Deleted:
+- **`npm run db:seed`**: Wipes ALL system tables (users, roles, tenants, workflows) using `TRUNCATE ... CASCADE`
+- **`npm run db:seed-master-data`**: Deletes ALL master data (products, product types, package types, inventory items)
+
+### When To Run Seeds:
+- ✅ **ONLY** during first-time project initialization (empty database)
+- ✅ **NEVER** after you've added real data through the UI
+- ✅ **NEVER** after running `npm run db:push` (schema updates are safe and don't require re-seeding)
+
+### Safe Database Operations:
+1. **Schema Changes**: Use `npm run db:push` to update schema - this is SAFE and preserves data
+2. **Force Schema Sync**: If needed, use `npm run db:push --force` - still SAFE for schema-only changes
+3. **Adding Data**: Use the UI or write custom SQL - DO NOT re-run seed scripts
+
+### Recovery From Data Loss:
+If you accidentally ran a seed script:
+1. Check if Replit has automatic backups/checkpoints
+2. Manually re-enter critical business data through the UI
+3. Consider implementing a backup strategy before making changes
+
+**Remember**: `db:push` = Safe schema updates. `db:seed` = Nuclear option that wipes everything!
+
 ## Data Model Clarification - CRITICAL
 **Products vs Inventory Items:**
 - **`products` table**: Master SKU list defining what types of SKUs the warehouse CAN store. This is the product catalog/master data.
