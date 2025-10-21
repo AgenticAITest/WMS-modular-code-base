@@ -6,3 +6,4 @@ export * from '@modules/master-data/server/lib/db/schemas/masterData';
 export * from '@modules/warehouse-setup/server/lib/db/schemas/warehouseSetup';
 export * from '@modules/inventory-items/server/lib/db/schemas/inventoryItems';
 export * from '@modules/document-numbering/server/lib/db/schemas/documentNumbering';
+export * from '@modules/purchase-order/server/lib/db/schemas/purchaseOrder';
