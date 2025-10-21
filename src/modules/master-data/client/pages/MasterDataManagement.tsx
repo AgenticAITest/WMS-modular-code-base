@@ -6,7 +6,7 @@ import PackageTypeTab from '../components/PackageTypeTab';
 import ProductTab from '../components/ProductTab';
 import SupplierTab from '../components/SupplierTab';
 import CustomerTab from '../components/CustomerTab';
-import PlaceholderTab from '../components/PlaceholderTab';
+import NumberTab from '../components/NumberTab';
 
 const MasterDataManagement = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -86,10 +86,7 @@ const MasterDataManagement = () => {
         </TabsContent>
 
         <TabsContent value="number" className="mt-6">
-          <PlaceholderTab 
-            title="Numbering" 
-            description="Numbering configuration feature is under development"
-          />
+          <NumberTab />
         </TabsContent>
       </Tabs>
     </div>
