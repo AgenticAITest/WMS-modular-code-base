@@ -29,6 +29,7 @@ export const workflowSteps = pgTable('workflow_steps', {
   stepKey: varchar('step_key', { length: 50 }).notNull(),
   stepName: varchar('step_name', { length: 255 }).notNull(),
   stepOrder: integer('step_order').notNull(),
+  isActive: boolean('is_active').notNull().default(true),
   isInitial: boolean('is_initial').notNull().default(false),
   isTerminal: boolean('is_terminal').notNull().default(false),
   requiredFields: jsonb('required_fields'),

@@ -2,11 +2,12 @@ import bcrypt from "bcryptjs";
 import { db } from ".";
 import { permission, role, rolePermission, tenant, user, userRole, userTenant } from "./schema/system";
 import { moduleRegistry } from "./schema/module";
+import { seedWorkflows } from "@modules/workflow/server/lib/seedWorkflows";
 
 async function seed() {
 
   console.log("Clearing table")
-  await db.execute(`TRUNCATE TABLE "sys_module_registry", "sys_user_tenant", "sys_user_role", "sys_role_permission", "sys_permission", "sys_role", "sys_user", "sys_option", "sys_tenant"  CASCADE`);
+  await db.execute(`TRUNCATE TABLE "workflow_steps", "workflows", "sys_module_registry", "sys_user_tenant", "sys_user_role", "sys_role_permission", "sys_permission", "sys_role", "sys_user", "sys_option", "sys_tenant"  CASCADE`);
 
   console.log("Seeding tenant");
   const sysTenantId = crypto.randomUUID();
@@ -118,6 +119,12 @@ async function seed() {
   //   { roleId: sysRoleId, permissionId: sysPermissionId, tenantId: sysTenantId },
   //   { roleId: pubRoleId, permissionId: pubPermissionId, tenantId: pubTenantId }
   // ]);
+
+  console.log("\nSeeding workflows for SYSTEM tenant");
+  await seedWorkflows(sysTenantId);
+  
+  console.log("\nSeeding workflows for PUBLIC tenant");
+  await seedWorkflows(pubTenantId);
 
 }
 

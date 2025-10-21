@@ -1,4 +1,4 @@
-import { Puzzle } from 'lucide-react';
+import { Puzzle, Settings } from 'lucide-react';
 
 export const workflowSidebarMenus = {
     id: 'workflow',
@@ -14,6 +14,14 @@ export const workflowSidebarMenus = {
         url: "/console/modules/workflow",
         roles: "ADMIN",
         permissions: "workflow.view",
+      },
+      {
+        id: "workflow-settings",
+        title: "Workflow Settings",
+        url: "/console/modules/workflow/settings",
+        roles: "ADMIN",
+        permissions: "workflow.edit",
+        icon: Settings,
       },
     ],
   };
