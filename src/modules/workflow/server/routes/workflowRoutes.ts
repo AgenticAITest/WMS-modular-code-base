@@ -372,7 +372,8 @@ router.post('/workflows', authorized('ADMIN', 'workflow.create'), async (req, re
  * /api/modules/workflow/workflows/{id}:
  *   put:
  *     summary: Update a workflow
- *     tags: [Workflows]
+ *     tags:
+ *       - Workflows
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -388,6 +389,13 @@ router.post('/workflows', authorized('ADMIN', 'workflow.create'), async (req, re
  *         application/json:
  *           schema:
  *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               isDefault:
+ *                 type: boolean
+ *               isActive:
+ *                 type: boolean
  *     responses:
  *       200:
  *         description: Workflow updated successfully
