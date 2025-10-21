@@ -826,8 +826,36 @@ router.get('/products', authorized('ADMIN', 'master-data.view'), async (req, res
       .where(and(...whereConditions));
 
     const data = await db
-      .select()
+      .select({
+        id: products.id,
+        tenantId: products.tenantId,
+        sku: products.sku,
+        name: products.name,
+        description: products.description,
+        inventoryTypeId: products.inventoryTypeId,
+        packageTypeId: products.packageTypeId,
+        weight: products.weight,
+        dimensions: products.dimensions,
+        minimumStockLevel: products.minimumStockLevel,
+        reorderPoint: products.reorderPoint,
+        requiredTemperatureMin: products.requiredTemperatureMin,
+        requiredTemperatureMax: products.requiredTemperatureMax,
+        hasExpiryDate: products.hasExpiryDate,
+        active: products.active,
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+        productType: {
+          id: productTypes.id,
+          name: productTypes.name,
+        },
+        packageType: {
+          id: packageTypes.id,
+          name: packageTypes.name,
+        },
+      })
       .from(products)
+      .leftJoin(productTypes, eq(products.inventoryTypeId, productTypes.id))
+      .leftJoin(packageTypes, eq(products.packageTypeId, packageTypes.id))
       .where(and(...whereConditions))
       .orderBy(desc(products.createdAt))
       .limit(limit)
