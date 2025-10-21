@@ -695,8 +695,6 @@ router.get('/stock-information', authorized('ADMIN', 'inventory-items.view'), as
     const search = req.query.search as string;
     const offset = (page - 1) * limit;
 
-    console.log('[Stock Info API] Request received:', { tenantId, page, limit, search });
-
     // Build where conditions
     const whereConditions = [eq(inventoryItems.tenantId, tenantId)];
     if (search) {
@@ -734,16 +732,12 @@ router.get('/stock-information', authorized('ADMIN', 'inventory-items.view'), as
         products.description,
         products.hasExpiryDate
       );
-    
-    console.log('[Stock Info API] Query results:', { count: allResults.length });
     const total = allResults.length;
 
     // Apply pagination
     const data = allResults
       .sort((a, b) => (a.productSku || '').localeCompare(b.productSku || ''))
       .slice(offset, offset + limit);
-
-    console.log('[Stock Info API] Sending response:', { total, pageData: data.length });
 
     const totalPages = Math.ceil(total / limit);
 
@@ -759,9 +753,8 @@ router.get('/stock-information', authorized('ADMIN', 'inventory-items.view'), as
         hasPrev: page > 1,
       },
     });
-  } catch (error: any) {
-    console.error('[Stock Info API] Error fetching stock information:', error);
-    console.error('[Stock Info API] Error details:', error.message, error.stack);
+  } catch (error) {
+    console.error('Error fetching stock information:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',
