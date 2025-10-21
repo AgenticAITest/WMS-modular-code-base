@@ -92,9 +92,17 @@ export const POConfirmationModal: React.FC<POConfirmationModalProps> = ({
     return 'No location specified';
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    if (loading) return;
+    
     setLoading(true);
-    onConfirm(poData);
+    try {
+      await onConfirm(poData);
+    } catch (error) {
+      console.error('Error confirming PO:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!poData) return null;

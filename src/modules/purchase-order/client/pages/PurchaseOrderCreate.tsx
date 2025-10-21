@@ -65,10 +65,15 @@ const PurchaseOrderCreate: React.FC = () => {
         setIsConfirmModalOpen(false);
         setIsPrintViewOpen(true);
         fetchUnapprovedPOs();
+      } else {
+        toast.error(response.data.message || 'Failed to create purchase order');
+        throw new Error(response.data.message || 'Failed to create purchase order');
       }
     } catch (error: any) {
       console.error('Error creating PO:', error);
-      toast.error(error.response?.data?.message || 'Failed to create purchase order');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to create purchase order';
+      toast.error(errorMessage);
+      throw error;
     }
   };
 
