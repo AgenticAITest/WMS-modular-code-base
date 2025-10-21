@@ -41,10 +41,27 @@ const numberConfigSchema = z.object({
 
 type NumberConfigForm = z.infer<typeof numberConfigSchema>;
 
+interface DocumentNumberConfig {
+  id: string;
+  documentType: string;
+  documentName: string;
+  periodFormat: string;
+  prefix1Label: string | null;
+  prefix1DefaultValue: string | null;
+  prefix1Required: boolean;
+  prefix2Label: string | null;
+  prefix2DefaultValue: string | null;
+  prefix2Required: boolean;
+  sequenceLength: number;
+  sequencePadding: string;
+  separator: string;
+  isActive: boolean;
+}
+
 interface NumberDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  editingItem: any;
+  editingItem: DocumentNumberConfig | null;
   onSuccess: () => void;
 }
 
@@ -95,7 +112,7 @@ const NumberDialog = ({
   const separator = watch('separator');
   const isActive = watch('isActive');
 
-  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const fetchPreview = useCallback(async (formData: any) => {
     if (!formData.documentType || !formData.periodFormat) {
@@ -110,14 +127,16 @@ const NumberDialog = ({
     timeoutRef.current = setTimeout(async () => {
       try {
         setPreviewLoading(true);
-        const response = await axios.post('/api/modules/document-numbering/preview', {
-          documentType: formData.documentType,
-          prefix1: formData.prefix1DefaultValue || undefined,
-          prefix2: formData.prefix2DefaultValue || undefined,
-        });
-        setPreview(response.data.previewNumber || '');
+        
+        const parts = [formData.documentType, '[PERIOD]'];
+        if (formData.prefix1DefaultValue) parts.push(formData.prefix1DefaultValue);
+        if (formData.prefix2DefaultValue) parts.push(formData.prefix2DefaultValue);
+        parts.push('0'.repeat(formData.sequenceLength || 4));
+        
+        const localPreview = parts.join(formData.separator || '-');
+        setPreview(localPreview);
       } catch (error) {
-        console.error('Failed to fetch preview:', error);
+        console.error('Failed to generate preview:', error);
         setPreview('Preview unavailable');
       } finally {
         setPreviewLoading(false);

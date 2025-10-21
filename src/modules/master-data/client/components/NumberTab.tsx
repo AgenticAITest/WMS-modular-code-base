@@ -93,17 +93,33 @@ const NumberTab = () => {
   const initializeDefaultConfigs = async () => {
     try {
       setInitializing(true);
-      const promises = DEFAULT_CONFIGS.map(config =>
-        axios.post('/api/modules/document-numbering/configs', {
-          ...config,
-          sequenceLength: 4,
-          sequencePadding: '0',
-          separator: '-',
-          isActive: true,
-        })
-      );
-      await Promise.all(promises);
-      toast.success('Default document types created successfully');
+      let successCount = 0;
+      let skipCount = 0;
+      
+      for (const config of DEFAULT_CONFIGS) {
+        try {
+          await axios.post('/api/modules/document-numbering/configs', {
+            ...config,
+            sequenceLength: 4,
+            sequencePadding: '0',
+            separator: '-',
+            isActive: true,
+          });
+          successCount++;
+        } catch (error: any) {
+          if (error.response?.status === 409) {
+            skipCount++;
+          } else {
+            throw error;
+          }
+        }
+      }
+      
+      if (successCount > 0) {
+        toast.success(`Created ${successCount} document type${successCount > 1 ? 's' : ''}${skipCount > 0 ? ` (${skipCount} already existed)` : ''}`);
+      } else {
+        toast.info('All default document types already exist');
+      }
       fetchConfigs();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to initialize default configurations');

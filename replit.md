@@ -19,6 +19,7 @@ None specified yet
 - Role-based access control (RBAC) and Permission-based authorization
 - User management
 - Master Data Management: Product, Inventory Type, Package Type, Supplier, and Customer CRUD operations with validation.
+- Document Numbering System: Standardized document number generation for all warehouse operations with period-based formatting (PO, GRN, SO, PICK, PACK, SHIP, etc.). Supports flexible prefixes, auto-incrementing sequences, and live preview.
 - Modular page structure for extensibility.
 - Comprehensive API documentation with Swagger.
 - Rate limiting and CORS support.
