@@ -2,11 +2,13 @@ import express from 'express';
 import { db } from '@server/lib/db';
 import { purchaseOrders, purchaseOrderItems } from '../lib/db/schemas/purchaseOrder';
 import { suppliers, supplierLocations, products } from '@modules/master-data/server/lib/db/schemas/masterData';
+import { inventoryItems } from '@modules/inventory-items/server/lib/db/schemas/inventoryItems';
 import { user } from '@server/lib/db/schema/system';
 import { authenticated, authorized } from '@server/middleware/authMiddleware';
-import { eq, and, desc, count, ilike, or, sql } from 'drizzle-orm';
+import { eq, and, desc, count, ilike, or, sql, sum } from 'drizzle-orm';
 import { checkModuleAuthorization } from '@server/middleware/moduleAuthMiddleware';
 import { v4 as uuidv4 } from 'uuid';
+import axios from 'axios';
 
 const router = express.Router();
 router.use(authenticated());
@@ -101,6 +103,109 @@ router.use(checkModuleAuthorization('purchase-order'));
  *           type: string
  *           format: date-time
  */
+
+// ==================== HELPER ENDPOINTS ====================
+
+/**
+ * @swagger
+ * /api/modules/purchase-order/products-with-stock:
+ *   get:
+ *     summary: Get all products with aggregated stock information for PO creation
+ *     tags: [Purchase Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of products with stock information
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'), async (req, res) => {
+  try {
+    const tenantId = req.user!.activeTenantId;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const search = req.query.search as string;
+    const offset = (page - 1) * limit;
+
+    // Build where conditions
+    const whereConditions = [eq(products.tenantId, tenantId)];
+    
+    if (search) {
+      whereConditions.push(
+        or(
+          ilike(products.sku, `%${search}%`),
+          ilike(products.name, `%${search}%`)
+        )!
+      );
+    }
+
+    // Get total count of products
+    const [totalResult] = await db
+      .select({ count: count() })
+      .from(products)
+      .where(and(...whereConditions));
+
+    // Get products with aggregated stock
+    const data = await db
+      .select({
+        productId: products.id,
+        sku: products.sku,
+        name: products.name,
+        minimumStockLevel: products.minimumStockLevel,
+        totalAvailableStock: sql<number>`COALESCE(SUM(${inventoryItems.availableQuantity}), 0)`,
+      })
+      .from(products)
+      .leftJoin(
+        inventoryItems,
+        and(
+          eq(products.id, inventoryItems.productId),
+          eq(inventoryItems.tenantId, tenantId)
+        )
+      )
+      .where(and(...whereConditions))
+      .groupBy(products.id, products.sku, products.name, products.minimumStockLevel)
+      .orderBy(products.name)
+      .limit(limit)
+      .offset(offset);
+
+    const totalPages = Math.ceil(totalResult.count / limit);
+
+    res.json({
+      success: true,
+      data,
+      pagination: {
+        page,
+        limit,
+        total: totalResult.count,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching products with stock:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
 
 // ==================== PURCHASE ORDERS CRUD ====================
 
