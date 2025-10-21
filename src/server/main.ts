@@ -16,6 +16,7 @@ import documentNumberGeneratorRoutes from '../modules/document-numbering/server/
 import documentNumberHistoryRoutes from '../modules/document-numbering/server/routes/documentNumberHistoryRoutes';
 import documentNumberTrackerRoutes from '../modules/document-numbering/server/routes/documentNumberTrackerRoutes';
 import purchaseOrderRoutes from '../modules/purchase-order/server/routes/purchaseOrderRoutes';
+import workflowRoutes from '../modules/workflow/server/routes/workflowRoutes';
 import ViteExpress from "vite-express";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -123,6 +124,9 @@ app.use('/api/modules/document-numbering', documentNumberTrackerRoutes);
 
 // purchase-order routes
 app.use('/api/modules/purchase-order', purchaseOrderRoutes);
+
+// workflow routes
+app.use('/api/modules/workflow', workflowRoutes);
 
 ViteExpress.listen(app, 5000, () =>
   console.log("Server is listening on port 5000..."),
