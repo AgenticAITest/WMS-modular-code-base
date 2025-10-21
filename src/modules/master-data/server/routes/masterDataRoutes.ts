@@ -885,6 +885,10 @@ router.get('/products', authorized('ADMIN', 'master-data.view'), async (req, res
       } : null,
     }));
 
+    console.log('[Products API] First product:', JSON.stringify(data[0], null, 2));
+    console.log('[Products API] ProductType:', data[0]?.productType);
+    console.log('[Products API] PackageType:', data[0]?.packageType);
+
     const totalPages = Math.ceil(totalResult.count / limit);
 
     res.json({

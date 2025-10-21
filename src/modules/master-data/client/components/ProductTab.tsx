@@ -65,6 +65,10 @@ const ProductTab = () => {
           search: searchTerm || undefined,
         },
       });
+      console.log('[ProductTab] API Response:', response.data);
+      console.log('[ProductTab] First product:', response.data.data?.[0]);
+      console.log('[ProductTab] ProductType:', response.data.data?.[0]?.productType);
+      console.log('[ProductTab] PackageType:', response.data.data?.[0]?.packageType);
       setProducts(response.data.data || []);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to fetch products');
