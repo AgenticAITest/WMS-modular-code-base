@@ -59,7 +59,7 @@ const WorkflowSettings: React.FC = () => {
 
         // Initialize step states for PO
         po.steps.forEach((step: WorkflowStep) => {
-          setStepStates(prev => ({ ...prev, [step.id]: step.isActive !== false }));
+          setStepStates(prev => ({ ...prev, [step.id]: step.isActive ?? true }));
         });
       }
 
@@ -71,7 +71,7 @@ const WorkflowSettings: React.FC = () => {
 
         // Initialize step states for SO
         so.steps.forEach((step: WorkflowStep) => {
-          setStepStates(prev => ({ ...prev, [step.id]: step.isActive !== false }));
+          setStepStates(prev => ({ ...prev, [step.id]: step.isActive ?? true }));
         });
       }
 
