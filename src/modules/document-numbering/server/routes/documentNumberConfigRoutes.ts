@@ -108,6 +108,7 @@ router.use(authenticated());
  */
 router.get('/configs', async (req, res) => {
   try {
+    // Fetch document number configurations with pagination
     const page = parseInt(req.query.page as string) || 1;
     const limit = Math.min(parseInt(req.query.limit as string) || 10, 100);
     const offset = (page - 1) * limit;
