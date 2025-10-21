@@ -444,32 +444,17 @@ router.get('/orders/:id', authorized('ADMIN', 'purchase-order.view'), async (req
  *           schema:
  *             type: object
  *             required:
- *               - orderNumber
  *               - supplierId
- *               - orderDate
  *             properties:
- *               orderNumber:
- *                 type: string
  *               supplierId:
  *                 type: string
  *                 format: uuid
  *               supplierLocationId:
  *                 type: string
  *                 format: uuid
- *               status:
- *                 type: string
- *                 enum: [pending, approved, received, completed]
- *               workflowState:
- *                 type: string
- *                 enum: [create, approve, receive, putaway, complete]
- *               orderDate:
- *                 type: string
- *                 format: date
  *               expectedDeliveryDate:
  *                 type: string
  *                 format: date
- *               totalAmount:
- *                 type: number
  *               notes:
  *                 type: string
  *               items:
@@ -502,36 +487,53 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
     const tenantId = req.user!.activeTenantId;
     const username = req.user!.username;
     const { 
-      orderNumber, 
       supplierId, 
       supplierLocationId,
-      status = 'pending',
-      workflowState = 'create',
-      orderDate, 
       expectedDeliveryDate,
-      totalAmount,
       notes,
       items = []
     } = req.body;
 
     // Validation
-    if (!orderNumber || !supplierId || !orderDate) {
+    if (!supplierId) {
       return res.status(400).json({
         success: false,
-        message: 'Order number, supplier, and order date are required',
+        message: 'Supplier is required',
       });
     }
 
-    // Check if order number already exists
-    const [existingOrder] = await db
-      .select()
-      .from(purchaseOrders)
-      .where(eq(purchaseOrders.orderNumber, orderNumber));
-
-    if (existingOrder) {
+    if (!items || items.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Order number already exists',
+        message: 'At least one item is required',
+      });
+    }
+
+    // Generate PO number via document numbering service
+    let orderNumber: string;
+    let documentHistoryId: string;
+    
+    try {
+      const docNumberResponse = await axios.post(
+        'http://localhost:5000/api/modules/document-numbering/generate',
+        {
+          documentType: 'PO',
+          documentTableName: 'purchase_orders',
+        },
+        {
+          headers: {
+            Authorization: req.headers.authorization,
+          },
+        }
+      );
+      
+      orderNumber = docNumberResponse.data.documentNumber;
+      documentHistoryId = docNumberResponse.data.historyId;
+    } catch (error: any) {
+      console.error('Error generating PO number:', error.response?.data || error.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to generate PO number',
       });
     }
 
@@ -541,48 +543,128 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
       .from(user)
       .where(eq(user.username, username));
 
-    // Create purchase order
+    // Calculate total amount from items
+    const totalAmount = items.reduce((sum: number, item: any) => {
+      const itemTotal = item.unitCost && item.orderedQuantity 
+        ? parseFloat(item.unitCost) * parseInt(item.orderedQuantity)
+        : 0;
+      return sum + itemTotal;
+    }, 0);
+
+    const orderId = uuidv4();
+    const orderDate = new Date().toISOString().split('T')[0];
+
+    // Create purchase order with status pending and workflowState approve
     const [newOrder] = await db
       .insert(purchaseOrders)
       .values({
-        id: uuidv4(),
+        id: orderId,
         tenantId,
         orderNumber,
         supplierId,
         supplierLocationId: supplierLocationId || null,
-        status,
-        workflowState,
+        status: 'pending',
+        workflowState: 'approve',
         orderDate,
         expectedDeliveryDate: expectedDeliveryDate || null,
-        totalAmount: totalAmount || null,
+        totalAmount: totalAmount.toFixed(2),
         notes: notes || null,
         createdBy: currentUser?.id || null,
       })
       .returning();
 
-    // Create items if provided
-    if (items.length > 0) {
-      const itemsToInsert = items.map((item: any) => ({
-        id: uuidv4(),
-        purchaseOrderId: newOrder.id,
-        productId: item.productId,
-        tenantId,
-        orderedQuantity: item.orderedQuantity,
-        receivedQuantity: 0,
-        unitCost: item.unitCost || null,
-        totalCost: item.unitCost && item.orderedQuantity 
-          ? (parseFloat(item.unitCost) * parseInt(item.orderedQuantity)).toFixed(2)
-          : null,
-        expectedExpiryDate: item.expectedExpiryDate || null,
-        notes: item.notes || null,
-      }));
-
-      await db.insert(purchaseOrderItems).values(itemsToInsert);
+    // Update document history with the actual document ID
+    try {
+      await axios.put(
+        `http://localhost:5000/api/modules/document-numbering/history/${documentHistoryId}`,
+        {
+          documentId: orderId,
+        },
+        {
+          headers: {
+            Authorization: req.headers.authorization,
+          },
+        }
+      );
+    } catch (error) {
+      console.error('Error updating document history:', error);
     }
+
+    // Create items
+    const itemsToInsert = items.map((item: any) => ({
+      id: uuidv4(),
+      purchaseOrderId: newOrder.id,
+      productId: item.productId,
+      tenantId,
+      orderedQuantity: item.orderedQuantity,
+      receivedQuantity: 0,
+      unitCost: item.unitCost || null,
+      totalCost: item.unitCost && item.orderedQuantity 
+        ? (parseFloat(item.unitCost) * parseInt(item.orderedQuantity)).toFixed(2)
+        : null,
+      expectedExpiryDate: item.expectedExpiryDate || null,
+      notes: item.notes || null,
+    }));
+
+    await db.insert(purchaseOrderItems).values(itemsToInsert);
+
+    // Fetch the complete PO with supplier and items for response
+    const [completeOrder] = await db
+      .select({
+        id: purchaseOrders.id,
+        tenantId: purchaseOrders.tenantId,
+        orderNumber: purchaseOrders.orderNumber,
+        supplierId: purchaseOrders.supplierId,
+        supplierName: suppliers.name,
+        supplierEmail: suppliers.email,
+        supplierPhone: suppliers.phone,
+        supplierLocationId: purchaseOrders.supplierLocationId,
+        locationAddress: supplierLocations.address,
+        locationCity: supplierLocations.city,
+        locationState: supplierLocations.state,
+        locationPostalCode: supplierLocations.postalCode,
+        locationCountry: supplierLocations.country,
+        status: purchaseOrders.status,
+        workflowState: purchaseOrders.workflowState,
+        orderDate: purchaseOrders.orderDate,
+        expectedDeliveryDate: purchaseOrders.expectedDeliveryDate,
+        totalAmount: purchaseOrders.totalAmount,
+        notes: purchaseOrders.notes,
+        createdBy: purchaseOrders.createdBy,
+        createdByName: user.fullname,
+        createdAt: purchaseOrders.createdAt,
+        updatedAt: purchaseOrders.updatedAt,
+      })
+      .from(purchaseOrders)
+      .leftJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
+      .leftJoin(supplierLocations, eq(purchaseOrders.supplierLocationId, supplierLocations.id))
+      .leftJoin(user, eq(purchaseOrders.createdBy, user.id))
+      .where(eq(purchaseOrders.id, orderId));
+
+    const orderItems = await db
+      .select({
+        id: purchaseOrderItems.id,
+        purchaseOrderId: purchaseOrderItems.purchaseOrderId,
+        productId: purchaseOrderItems.productId,
+        productName: products.name,
+        productSku: products.sku,
+        orderedQuantity: purchaseOrderItems.orderedQuantity,
+        receivedQuantity: purchaseOrderItems.receivedQuantity,
+        unitCost: purchaseOrderItems.unitCost,
+        totalCost: purchaseOrderItems.totalCost,
+        expectedExpiryDate: purchaseOrderItems.expectedExpiryDate,
+        notes: purchaseOrderItems.notes,
+      })
+      .from(purchaseOrderItems)
+      .leftJoin(products, eq(purchaseOrderItems.productId, products.id))
+      .where(eq(purchaseOrderItems.purchaseOrderId, orderId));
 
     res.status(201).json({
       success: true,
-      data: newOrder,
+      data: {
+        ...completeOrder,
+        items: orderItems,
+      },
       message: 'Purchase order created successfully',
     });
   } catch (error) {
