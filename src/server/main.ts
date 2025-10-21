@@ -11,6 +11,10 @@ import warehouseSetupRoutes from '../modules/warehouse-setup/server/routes/wareh
 import warehouseRoutes from '../modules/warehouse-setup/server/routes/warehouseRoutes';
 import zoneRoutes from '../modules/warehouse-setup/server/routes/zoneRoutes';
 import inventoryItemsRoutes from '../modules/inventory-items/server/routes/inventoryItemsRoutes';
+import documentNumberConfigRoutes from '../modules/document-numbering/server/routes/documentNumberConfigRoutes';
+import documentNumberGeneratorRoutes from '../modules/document-numbering/server/routes/documentNumberGeneratorRoutes';
+import documentNumberHistoryRoutes from '../modules/document-numbering/server/routes/documentNumberHistoryRoutes';
+import documentNumberTrackerRoutes from '../modules/document-numbering/server/routes/documentNumberTrackerRoutes';
 import ViteExpress from "vite-express";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -109,6 +113,12 @@ app.use('/api/modules/warehouse-setup', zoneRoutes);
 
 // inventory-items routes
 app.use('/api/modules/inventory-items', inventoryItemsRoutes);
+
+// document-numbering routes
+app.use('/api/modules/document-numbering', documentNumberConfigRoutes);
+app.use('/api/modules/document-numbering', documentNumberGeneratorRoutes);
+app.use('/api/modules/document-numbering', documentNumberHistoryRoutes);
+app.use('/api/modules/document-numbering', documentNumberTrackerRoutes);
 
 ViteExpress.listen(app, 5000, () =>
   console.log("Server is listening on port 5000..."),
