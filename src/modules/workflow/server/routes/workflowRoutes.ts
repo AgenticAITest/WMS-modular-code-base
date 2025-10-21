@@ -634,11 +634,6 @@ router.get('/steps', authorized('ADMIN', 'workflow.view'), async (req, res) => {
       .limit(limit)
       .offset(offset);
 
-    console.log(`[DEBUG] GET /steps - TenantID: ${tenantId}, WorkflowID: ${workflowId}, Steps returned: ${data.length}`);
-    if (data.length > 0 && data[0].workflowType === 'SALES_ORDER') {
-      console.log('[DEBUG] SO Steps:', data.map(s => ({ name: s.stepName, isActive: s.isActive })));
-    }
-
     const totalPages = Math.ceil(totalResult.count / limit);
 
     res.json({

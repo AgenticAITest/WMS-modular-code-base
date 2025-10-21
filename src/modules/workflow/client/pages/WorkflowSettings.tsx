@@ -51,15 +51,18 @@ const WorkflowSettings: React.FC = () => {
       const po = workflows.find((w: Workflow) => w.type === 'PURCHASE_ORDER' && w.isDefault);
       const so = workflows.find((w: Workflow) => w.type === 'SALES_ORDER' && w.isDefault);
 
+      // Collect all step states in a single object to avoid race conditions
+      const newStepStates: Record<string, boolean> = {};
+
       if (po) {
         // Fetch PO steps
         const poStepsResponse = await axios.get(`/api/modules/workflow/steps?workflowId=${po.id}&limit=100`);
         po.steps = poStepsResponse.data.data.sort((a: WorkflowStep, b: WorkflowStep) => a.stepOrder - b.stepOrder);
         setPoWorkflow(po);
 
-        // Initialize step states for PO
+        // Collect step states for PO
         po.steps.forEach((step: WorkflowStep) => {
-          setStepStates(prev => ({ ...prev, [step.id]: step.isActive ?? true }));
+          newStepStates[step.id] = step.isActive ?? true;
         });
       }
 
@@ -69,15 +72,14 @@ const WorkflowSettings: React.FC = () => {
         so.steps = soStepsResponse.data.data.sort((a: WorkflowStep, b: WorkflowStep) => a.stepOrder - b.stepOrder);
         setSoWorkflow(so);
 
-        console.log('SO Workflow:', so);
-        console.log('SO Steps from API:', soStepsResponse.data.data);
-
-        // Initialize step states for SO
+        // Collect step states for SO
         so.steps.forEach((step: WorkflowStep) => {
-          console.log(`Step: ${step.stepName}, isActive: ${step.isActive}`);
-          setStepStates(prev => ({ ...prev, [step.id]: step.isActive ?? true }));
+          newStepStates[step.id] = step.isActive ?? true;
         });
       }
+
+      // Set all step states at once to avoid race conditions
+      setStepStates(newStepStates);
 
     } catch (error) {
       console.error('Error fetching workflows:', error);
