@@ -6,31 +6,32 @@ This project is a comprehensive admin dashboard built with React, TypeScript, Vi
 ## User Preferences
 None specified yet
 
-## ⚠️ CRITICAL: Database Seed Scripts - Data Loss Warning
+## ✅ Database Seed Scripts - NOW SAFE!
 
-**DANGER**: The seed scripts in this project are **DESTRUCTIVE** and will **DELETE ALL YOUR DATA**. Only run them during initial project setup!
+**UPDATED**: The seed scripts have been **PROTECTED** and will now check for existing data before seeding.
 
-### What Gets Deleted:
-- **`npm run db:seed`**: Wipes ALL system tables (users, roles, tenants, workflows) using `TRUNCATE ... CASCADE`
-- **`npm run db:seed-master-data`**: Deletes ALL master data (products, product types, package types, inventory items)
+### What Changed (Safety Improvements):
+- **`npm run db:seed`**: Now checks if tenants exist. If found, **skips seeding** and preserves your data
+- **`npm run db:seed-master-data`**: Now checks if product types exist. If found, **skips seeding** and preserves your data
 
-### When To Run Seeds:
-- ✅ **ONLY** during first-time project initialization (empty database)
-- ✅ **NEVER** after you've added real data through the UI
-- ✅ **NEVER** after running `npm run db:push` (schema updates are safe and don't require re-seeding)
+### Seed Script Behavior:
+✅ **First Run (Empty Database)**: Seeds all default data (tenants, users, roles, workflows, master data)
+✅ **Subsequent Runs (Data Exists)**: Displays warning and **aborts to protect your data**
+✅ **Schema Changes**: Use `npm run db:push` to update schema - this is SAFE and preserves data
 
 ### Safe Database Operations:
-1. **Schema Changes**: Use `npm run db:push` to update schema - this is SAFE and preserves data
+1. **Schema Changes**: Use `npm run db:push` to update schema without losing data
 2. **Force Schema Sync**: If needed, use `npm run db:push --force` - still SAFE for schema-only changes
-3. **Adding Data**: Use the UI or write custom SQL - DO NOT re-run seed scripts
+3. **Adding Data**: Use the UI or write custom SQL
+4. **Re-seeding**: Seed scripts will now refuse to run if data exists (protects your data!)
 
-### Recovery From Data Loss:
-If you accidentally ran a seed script:
-1. Check if Replit has automatic backups/checkpoints
-2. Manually re-enter critical business data through the UI
-3. Consider implementing a backup strategy before making changes
+### If You Really Need to Re-seed:
+If you absolutely must start fresh (THIS WILL DELETE ALL DATA):
+1. Manually delete all data first using SQL or UI
+2. Then run the seed scripts
+3. Or use a fresh database instance
 
-**Remember**: `db:push` = Safe schema updates. `db:seed` = Nuclear option that wipes everything!
+**Remember**: `db:push` = Safe schema updates. Seed scripts = Now protected with data existence checks!
 
 ## Data Model Clarification - CRITICAL
 **Products vs Inventory Items:**

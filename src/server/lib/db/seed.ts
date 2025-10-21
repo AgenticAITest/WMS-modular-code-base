@@ -6,8 +6,21 @@ import { seedWorkflows } from "@modules/workflow/server/lib/seedWorkflows";
 
 async function seed() {
 
-  console.log("Clearing table")
-  await db.execute(`TRUNCATE TABLE "workflow_steps", "workflows", "sys_module_registry", "sys_user_tenant", "sys_user_role", "sys_role_permission", "sys_permission", "sys_role", "sys_user", "sys_option", "sys_tenant"  CASCADE`);
+  // Check if data already exists
+  console.log("Checking for existing data...");
+  const existingTenants = await db.select({ id: tenant.id }).from(tenant).limit(1);
+  
+  if (existingTenants.length > 0) {
+    console.log("\n⚠️  WARNING: Database already contains data!");
+    console.log("Found existing tenants. Skipping seed to preserve your data.");
+    console.log("\nIf you really want to re-seed (THIS WILL DELETE ALL DATA):");
+    console.log("1. Manually delete all data first");
+    console.log("2. Or use a fresh database");
+    console.log("\nSeed aborted to protect your existing data.");
+    return;
+  }
+
+  console.log("No existing data found. Proceeding with seed...\n");
 
   console.log("Seeding tenant");
   const sysTenantId = crypto.randomUUID();
@@ -113,12 +126,6 @@ async function seed() {
   await db.insert(moduleRegistry).values([
     { id: crypto.randomUUID(), moduleId: "sample-module", moduleName: "Sample Module", description: "Sample module for demonstrating the modular architecture with CRUD operations", version: "1.0.0", category: "Sample", isActive: true, repositoryUrl: "https://github.com/sample/sample-module",documentationUrl: "https://docs.sample.com/sample-module"},
   ]);
-
-  // console.log("Seeding role permission");
-  // await db.insert(rolePermission).values([
-  //   { roleId: sysRoleId, permissionId: sysPermissionId, tenantId: sysTenantId },
-  //   { roleId: pubRoleId, permissionId: pubPermissionId, tenantId: pubTenantId }
-  // ]);
 
   console.log("\nSeeding workflows for SYSTEM tenant");
   await seedWorkflows(sysTenantId);

@@ -16,17 +16,35 @@ async function seedMasterDataAndInventory() {
   const tenantId = tenantsResult[0].id;
   console.log("Using tenant ID:", tenantId);
 
+  // Check if master data already exists
+  console.log("Checking for existing master data...");
+  const existingProductTypes = await db.select({ id: productTypes.id }).from(productTypes).limit(1);
+  const existingPackageTypes = await db.select({ id: packageTypes.id }).from(packageTypes).limit(1);
+  const existingProducts = await db.select({ id: products.id }).from(products).limit(1);
+  
+  if (existingProductTypes.length > 0 || existingPackageTypes.length > 0 || existingProducts.length > 0) {
+    console.log("\n⚠️  WARNING: Master data already exists!");
+    console.log("Found existing product types, package types, or products.");
+    console.log("Skipping seed to preserve your data.");
+    console.log("\nIf you really want to re-seed (THIS WILL DELETE ALL DATA):");
+    console.log("1. Manually delete master data first");
+    console.log("2. Or use a fresh database");
+    console.log("\nSeed aborted to protect your existing data.");
+    return;
+  }
+
+  console.log("No existing master data found. Proceeding with seed...\n");
+
   // Get some bins for inventory
   const binsResult = await db.select({ id: bins.id }).from(bins).limit(10);
   const binIds = binsResult.map((bin) => bin.id);
   console.log(`Found ${binIds.length} bins for inventory items`);
 
-  // Clear existing data
-  console.log("Clearing existing master data and inventory...");
-  await db.delete(inventoryItems);
-  await db.delete(products);
-  await db.delete(packageTypes);
-  await db.delete(productTypes);
+  if (binIds.length === 0) {
+    console.log("\n⚠️  WARNING: No bins found!");
+    console.log("Please create warehouse structure (warehouses, zones, aisles, shelves, bins) before seeding inventory.");
+    console.log("Seeding will continue without inventory items.");
+  }
 
   // Seed Product Types
   console.log("Seeding product types...");
@@ -298,62 +316,71 @@ async function seedMasterDataAndInventory() {
   await db.insert(products).values(productData);
   console.log(`✓ Seeded ${productData.length} products`);
 
-  // Seed Inventory Items
-  console.log("Seeding inventory items...");
-  
-  // Helper function to get random date in the future (for expiry)
-  const getRandomFutureDate = (daysMin: number, daysMax: number) => {
-    const today = new Date();
-    const days = Math.floor(Math.random() * (daysMax - daysMin) + daysMin);
-    const futureDate = new Date(today);
-    futureDate.setDate(today.getDate() + days);
-    return futureDate.toISOString().split('T')[0];
-  };
-
-  // Helper function to get random past date (for received)
-  const getRandomPastDate = (daysMin: number, daysMax: number) => {
-    const today = new Date();
-    const days = Math.floor(Math.random() * (daysMax - daysMin) + daysMin);
-    const pastDate = new Date(today);
-    pastDate.setDate(today.getDate() - days);
-    return pastDate.toISOString().split('T')[0];
-  };
-
-  const inventoryItemData: any[] = [];
-  
-  // Create multiple inventory items for each product across different bins
-  productData.forEach((product, productIndex) => {
-    const itemsPerProduct = Math.min(3, binIds.length); // 3 items per product or less if not enough bins
+  // Seed Inventory Items only if bins exist
+  if (binIds.length > 0) {
+    console.log("Seeding inventory items...");
     
-    for (let i = 0; i < itemsPerProduct; i++) {
-      const binIndex = (productIndex * itemsPerProduct + i) % binIds.length;
-      const hasExpiry = product.hasExpiryDate;
+    // Helper function to get random date in the future (for expiry)
+    const getRandomFutureDate = (daysMin: number, daysMax: number) => {
+      const today = new Date();
+      const days = Math.floor(Math.random() * (daysMax - daysMin) + daysMin);
+      const futureDate = new Date(today);
+      futureDate.setDate(today.getDate() + days);
+      return futureDate.toISOString().split('T')[0];
+    };
+
+    // Helper function to get random past date (for received)
+    const getRandomPastDate = (daysMin: number, daysMax: number) => {
+      const today = new Date();
+      const days = Math.floor(Math.random() * (daysMax - daysMin) + daysMin);
+      const pastDate = new Date(today);
+      pastDate.setDate(today.getDate() - days);
+      return pastDate.toISOString().split('T')[0];
+    };
+
+    const inventoryItemData: any[] = [];
+    
+    // Create multiple inventory items for each product across different bins
+    productData.forEach((product, productIndex) => {
+      const itemsPerProduct = Math.min(3, binIds.length); // 3 items per product or less if not enough bins
       
-      inventoryItemData.push({
-        id: crypto.randomUUID(),
-        tenantId,
-        productId: product.id,
-        binId: binIds[binIndex],
-        availableQuantity: Math.floor(Math.random() * 500) + 50,
-        reservedQuantity: Math.floor(Math.random() * 50),
-        expiryDate: hasExpiry ? getRandomFutureDate(30, 365) : null,
-        batchNumber: hasExpiry ? `BATCH-${product.sku.substring(0, 8)}-${String(i + 1).padStart(3, '0')}` : null,
-        lotNumber: `LOT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0')}`,
-        receivedDate: getRandomPastDate(1, 90),
-        costPerUnit: (Math.random() * 1000 + 10).toFixed(2),
-      });
-    }
-  });
+      for (let i = 0; i < itemsPerProduct; i++) {
+        const binIndex = (productIndex * itemsPerProduct + i) % binIds.length;
+        const hasExpiry = product.hasExpiryDate;
+        
+        inventoryItemData.push({
+          id: crypto.randomUUID(),
+          tenantId,
+          productId: product.id,
+          binId: binIds[binIndex],
+          availableQuantity: Math.floor(Math.random() * 500) + 50,
+          reservedQuantity: Math.floor(Math.random() * 50),
+          expiryDate: hasExpiry ? getRandomFutureDate(30, 365) : null,
+          batchNumber: hasExpiry ? `BATCH-${product.sku.substring(0, 8)}-${String(i + 1).padStart(3, '0')}` : null,
+          lotNumber: `LOT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0')}`,
+          receivedDate: getRandomPastDate(1, 90),
+          costPerUnit: (Math.random() * 1000 + 10).toFixed(2),
+        });
+      }
+    });
 
-  await db.insert(inventoryItems).values(inventoryItemData);
-  console.log(`✓ Seeded ${inventoryItemData.length} inventory items`);
+    await db.insert(inventoryItems).values(inventoryItemData);
+    console.log(`✓ Seeded ${inventoryItemData.length} inventory items`);
 
-  console.log("\n=== Seeding Summary ===");
-  console.log(`Product Types: ${productTypeData.length}`);
-  console.log(`Package Types: ${packageTypeData.length}`);
-  console.log(`Products: ${productData.length}`);
-  console.log(`Inventory Items: ${inventoryItemData.length}`);
-  console.log("======================\n");
+    console.log("\n=== Seeding Summary ===");
+    console.log(`Product Types: ${productTypeData.length}`);
+    console.log(`Package Types: ${packageTypeData.length}`);
+    console.log(`Products: ${productData.length}`);
+    console.log(`Inventory Items: ${inventoryItemData.length}`);
+    console.log("======================\n");
+  } else {
+    console.log("\n=== Seeding Summary ===");
+    console.log(`Product Types: ${productTypeData.length}`);
+    console.log(`Package Types: ${packageTypeData.length}`);
+    console.log(`Products: ${productData.length}`);
+    console.log(`Inventory Items: 0 (no bins available)`);
+    console.log("======================\n");
+  }
 }
 
 async function main() {
