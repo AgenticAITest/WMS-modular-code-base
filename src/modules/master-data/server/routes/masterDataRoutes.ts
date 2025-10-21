@@ -825,7 +825,7 @@ router.get('/products', authorized('ADMIN', 'master-data.view'), async (req, res
       .from(products)
       .where(and(...whereConditions));
 
-    const data = await db
+    const rawData = await db
       .select({
         id: products.id,
         tenantId: products.tenantId,
@@ -844,14 +844,10 @@ router.get('/products', authorized('ADMIN', 'master-data.view'), async (req, res
         active: products.active,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
-        productType: {
-          id: productTypes.id,
-          name: productTypes.name,
-        },
-        packageType: {
-          id: packageTypes.id,
-          name: packageTypes.name,
-        },
+        productTypeId: productTypes.id,
+        productTypeName: productTypes.name,
+        packageTypeId_joined: packageTypes.id,
+        packageTypeName: packageTypes.name,
       })
       .from(products)
       .leftJoin(productTypes, eq(products.inventoryTypeId, productTypes.id))
@@ -860,6 +856,34 @@ router.get('/products', authorized('ADMIN', 'master-data.view'), async (req, res
       .orderBy(desc(products.createdAt))
       .limit(limit)
       .offset(offset);
+
+    const data = rawData.map(row => ({
+      id: row.id,
+      tenantId: row.tenantId,
+      sku: row.sku,
+      name: row.name,
+      description: row.description,
+      inventoryTypeId: row.inventoryTypeId,
+      packageTypeId: row.packageTypeId,
+      weight: row.weight,
+      dimensions: row.dimensions,
+      minimumStockLevel: row.minimumStockLevel,
+      reorderPoint: row.reorderPoint,
+      requiredTemperatureMin: row.requiredTemperatureMin,
+      requiredTemperatureMax: row.requiredTemperatureMax,
+      hasExpiryDate: row.hasExpiryDate,
+      active: row.active,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      productType: row.productTypeId ? {
+        id: row.productTypeId,
+        name: row.productTypeName
+      } : null,
+      packageType: row.packageTypeId_joined ? {
+        id: row.packageTypeId_joined,
+        name: row.packageTypeName
+      } : null,
+    }));
 
     const totalPages = Math.ceil(totalResult.count / limit);
 
