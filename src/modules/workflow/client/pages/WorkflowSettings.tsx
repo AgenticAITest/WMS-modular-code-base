@@ -69,8 +69,12 @@ const WorkflowSettings: React.FC = () => {
         so.steps = soStepsResponse.data.data.sort((a: WorkflowStep, b: WorkflowStep) => a.stepOrder - b.stepOrder);
         setSoWorkflow(so);
 
+        console.log('SO Workflow:', so);
+        console.log('SO Steps from API:', soStepsResponse.data.data);
+
         // Initialize step states for SO
         so.steps.forEach((step: WorkflowStep) => {
+          console.log(`Step: ${step.stepName}, isActive: ${step.isActive}`);
           setStepStates(prev => ({ ...prev, [step.id]: step.isActive ?? true }));
         });
       }
