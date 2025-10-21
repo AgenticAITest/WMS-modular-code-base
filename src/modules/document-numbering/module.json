@@ -1,0 +1,48 @@
+{
+  "id": "document-numbering",
+  "name": "Document Numbering",
+  "owner": "System",
+  "description": "Standardized document numbering system for all document types with configurable formats and auto-increment sequences",
+  "version": "1.0.0",
+  "metadata": {
+    "category": "System",
+    "tags": ["document", "numbering", "sequence", "configuration"],
+    "dependencies": {
+      "requires": ["authentication", "multi-tenant"],
+      "optional": []
+    },
+    "permissions": [
+      "document-numbering.view",
+      "document-numbering.create",
+      "document-numbering.edit",
+      "document-numbering.delete"
+    ],
+    "routes": {
+      "api": "/api/modules/document-numbering",
+      "client": "/console/modules/document-numbering"
+    },
+    "database": {
+      "tables": [
+        "document_number_config",
+        "document_sequence_tracker",
+        "document_number_history"
+      ],
+      "relations": ["tenant"]
+    },
+    "features": [
+      "Flexible document number format configuration",
+      "Auto-increment sequences with period-based reset",
+      "Support for 1 or 2 user-defined prefixes",
+      "Complete audit trail of generated numbers",
+      "Multi-tenant support",
+      "Concurrent-safe sequence generation"
+    ]
+  },
+  "author": {
+    "name": "System Team",
+    "email": "system@example.com"
+  },
+  "license": "MIT",
+  "createdAt": "2025-10-21T00:00:00Z",
+  "updatedAt": "2025-10-21T00:00:00Z"
+}
