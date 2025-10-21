@@ -1,19 +1,15 @@
 import { RouteObject } from 'react-router';
-import PurchaseOrderList from '../pages/PurchaseOrderList';
-import PurchaseOrderAdd from '../pages/PurchaseOrderAdd';
-// TODO: Import other pages when created
-// import PurchaseOrderView from '../pages/PurchaseOrderView';
-// import PurchaseOrderEdit from '../pages/PurchaseOrderEdit';
+import PurchaseOrderCreate from '../pages/PurchaseOrderCreate';
 
 export const purchaseOrderReactRoutes = (basePath: string): RouteObject => {
   return {
     path: basePath,
     children: [
-      { index: true, Component: PurchaseOrderList },
-      { path: 'add', Component: PurchaseOrderAdd },
-      // TODO: Uncomment when pages are created
-      // { path: ':id', Component: PurchaseOrderView },
-      // { path: ':id/edit', Component: PurchaseOrderEdit },
+      { index: true, Component: PurchaseOrderCreate },
+      { path: 'create', Component: PurchaseOrderCreate },
+      { path: 'approve', Component: () => <div>Approve Purchase Order - Coming Soon</div> },
+      { path: 'receive', Component: () => <div>Receive - Coming Soon</div> },
+      { path: 'putaway', Component: () => <div>Putaway - Coming Soon</div> },
     ]
   };
 };
