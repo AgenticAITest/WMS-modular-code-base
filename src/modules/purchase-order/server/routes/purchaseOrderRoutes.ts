@@ -176,7 +176,7 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
       .from(products)
       .leftJoin(inventoryItems, and(
         eq(inventoryItems.productId, products.id),
-        eq(inventoryItems.tenantId, tenantId)
+        eq(inventoryItems.tenantId, products.tenantId)
       ))
       .where(and(...whereConditions))
       .groupBy(products.id, products.sku, products.name, products.minimumStockLevel)
