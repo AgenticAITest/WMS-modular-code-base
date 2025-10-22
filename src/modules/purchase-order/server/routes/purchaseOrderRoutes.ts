@@ -158,50 +158,63 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
       );
     }
 
-    // Get total count of all products for the tenant
-    const [totalResult] = await db
-      .select({ count: sql<number>`COUNT(*)` })
-      .from(products)
-      .where(and(...whereConditions));
+    // Build search condition for raw SQL
+    const searchCondition = search 
+      ? sql`AND (p.sku ILIKE ${`%${search}%`} OR p.name ILIKE ${`%${search}%`})`
+      : sql``;
 
-    // Pre-aggregate inventory stock per product in a subquery (CTE)
-    // This ensures we can LEFT JOIN it to products and keep all products visible
-    const stockSubquery = db.$with('stock_per_product').as(
-      db
-        .select({
-          productId: inventoryItems.productId,
-          totalAvailableStock: sql<number>`SUM(${inventoryItems.availableQuantity})`.as('total_available_stock'),
-        })
-        .from(inventoryItems)
-        .where(eq(inventoryItems.tenantId, tenantId))
-        .groupBy(inventoryItems.productId)
-    );
+    // Get total count using raw SQL
+    const countResult = await db.execute<{ count: string }>(sql`
+      SELECT COUNT(*) as count
+      FROM products p
+      WHERE p.tenant_id = ${tenantId}
+      ${searchCondition}
+    `);
+    const totalCount = parseInt(countResult[0].count);
 
-    // Main query: LEFT JOIN products with aggregated stock subquery
-    const data = await db
-      .with(stockSubquery)
-      .select({
-        productId: products.id,
-        sku: products.sku,
-        name: products.name,
-        minimumStockLevel: products.minimumStockLevel,
-        totalAvailableStock: sql<number>`COALESCE(${stockSubquery.totalAvailableStock}, 0)`.as('total_stock'),
-      })
-      .from(products)
-      .leftJoin(stockSubquery, eq(stockSubquery.productId, products.id))
-      .where(and(...whereConditions))
-      .orderBy(products.sku)
-      .limit(limit)
-      .offset(offset);
+    // Execute raw SQL query to get all products with stock
+    const data = await db.execute<{
+      product_id: string;
+      sku: string;
+      name: string;
+      minimum_stock_level: number;
+      total_available_stock: string;
+    }>(sql`
+      SELECT 
+        p.id as product_id,
+        p.sku,
+        p.name,
+        p.minimum_stock_level,
+        COALESCE(SUM(i.available_quantity), 0) as total_available_stock
+      FROM products p
+      LEFT JOIN inventory_items i 
+        ON i.product_id = p.id
+        AND i.tenant_id = p.tenant_id
+      WHERE p.tenant_id = ${tenantId}
+      ${searchCondition}
+      GROUP BY p.id, p.sku, p.name, p.minimum_stock_level
+      ORDER BY p.sku
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `);
+
+    // Transform raw result to match expected format
+    const formattedData = data.map(row => ({
+      productId: row.product_id,
+      sku: row.sku,
+      name: row.name,
+      minimumStockLevel: row.minimum_stock_level,
+      totalAvailableStock: parseInt(row.total_available_stock),
+    }));
 
     res.json({
       success: true,
-      data: data,
+      data: formattedData,
       pagination: {
         page,
         limit,
-        total: totalResult.count || 0,
-        totalPages: Math.ceil((totalResult.count || 0) / limit)
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit)
       }
     });
   } catch (error: any) {
