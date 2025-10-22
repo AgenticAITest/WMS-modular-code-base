@@ -146,77 +146,89 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
     const search = req.query.search as string;
     const offset = (page - 1) * limit;
 
-    // Build WHERE conditions for products
-    const whereConditions = [eq(products.tenantId, tenantId)];
-    
-    if (search) {
-      whereConditions.push(
-        or(
-          ilike(products.sku, `%${search}%`),
-          ilike(products.name, `%${search}%`)
-        )!
-      );
-    }
-
     // Build search condition for raw SQL
     const searchCondition = search 
       ? sql`AND (p.sku ILIKE ${`%${search}%`} OR p.name ILIKE ${`%${search}%`})`
       : sql``;
 
-    // Get total count using raw SQL
-    const countResult = await db.execute<{ count: string }>(sql`
-      SELECT COUNT(*) as count
-      FROM products p
-      WHERE p.tenant_id = ${tenantId}
-      ${searchCondition}
-    `);
-    const totalCount = parseInt(countResult[0].count);
+    // Use temporary views to avoid LEFT JOIN + GROUP BY filtering issues
+    // This ensures all products are returned regardless of inventory_items existence
+    const viewNameProducts = `products_tenant_${tenantId.replace(/-/g, '_')}`;
+    const viewNameInventory = `inventory_tenant_${tenantId.replace(/-/g, '_')}`;
 
-    // Execute raw SQL query to get all products with stock
-    const data = await db.execute<{
-      product_id: string;
-      sku: string;
-      name: string;
-      minimum_stock_level: number;
-      total_available_stock: string;
-    }>(sql`
-      SELECT 
-        p.id as product_id,
-        p.sku,
-        p.name,
-        p.minimum_stock_level,
-        COALESCE(SUM(i.available_quantity), 0) as total_available_stock
-      FROM products p
-      LEFT JOIN inventory_items i 
-        ON i.product_id = p.id
-        AND i.tenant_id = p.tenant_id
-      WHERE p.tenant_id = ${tenantId}
-      ${searchCondition}
-      GROUP BY p.id, p.sku, p.name, p.minimum_stock_level
-      ORDER BY p.sku
-      LIMIT ${limit}
-      OFFSET ${offset}
-    `);
+    try {
+      // Create temporary views filtered by tenant
+      await db.execute(sql.raw(`
+        CREATE TEMP VIEW ${viewNameProducts} AS 
+        SELECT * FROM products WHERE tenant_id = '${tenantId}'
+      `));
 
-    // Transform raw result to match expected format
-    const formattedData = data.map(row => ({
-      productId: row.product_id,
-      sku: row.sku,
-      name: row.name,
-      minimumStockLevel: row.minimum_stock_level,
-      totalAvailableStock: parseInt(row.total_available_stock),
-    }));
+      await db.execute(sql.raw(`
+        CREATE TEMP VIEW ${viewNameInventory} AS 
+        SELECT * FROM inventory_items WHERE tenant_id = '${tenantId}'
+      `));
 
-    res.json({
-      success: true,
-      data: formattedData,
-      pagination: {
-        page,
-        limit,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / limit)
+      // Get total count from the view
+      const countResult = await db.execute<{ count: string }>(sql.raw(`
+        SELECT COUNT(*) as count
+        FROM ${viewNameProducts} p
+        WHERE 1=1
+        ${search ? `AND (p.sku ILIKE '%${search}%' OR p.name ILIKE '%${search}%')` : ''}
+      `));
+      const totalCount = parseInt(countResult[0].count);
+
+      // Execute query using temporary views (no WHERE clause needed)
+      const data = await db.execute<{
+        product_id: string;
+        sku: string;
+        name: string;
+        minimum_stock_level: number;
+        total_available_stock: string;
+      }>(sql.raw(`
+        SELECT 
+          p.id as product_id,
+          p.sku,
+          p.name,
+          p.minimum_stock_level,
+          COALESCE(SUM(i.available_quantity), 0) as total_available_stock
+        FROM ${viewNameProducts} p
+        LEFT JOIN ${viewNameInventory} i ON i.product_id = p.id
+        WHERE 1=1
+        ${search ? `AND (p.sku ILIKE '%${search}%' OR p.name ILIKE '%${search}%')` : ''}
+        GROUP BY p.id, p.sku, p.name, p.minimum_stock_level
+        ORDER BY p.sku
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `));
+
+      // Transform raw result to match expected format
+      const formattedData = data.map(row => ({
+        productId: row.product_id,
+        sku: row.sku,
+        name: row.name,
+        minimumStockLevel: row.minimum_stock_level,
+        totalAvailableStock: parseInt(row.total_available_stock),
+      }));
+
+      res.json({
+        success: true,
+        data: formattedData,
+        pagination: {
+          page,
+          limit,
+          total: totalCount,
+          totalPages: Math.ceil(totalCount / limit)
+        }
+      });
+    } finally {
+      // Clean up: Drop temporary views
+      try {
+        await db.execute(sql.raw(`DROP VIEW IF EXISTS ${viewNameProducts}`));
+        await db.execute(sql.raw(`DROP VIEW IF EXISTS ${viewNameInventory}`));
+      } catch (cleanupError) {
+        console.error('Error dropping temporary views:', cleanupError);
       }
-    });
+    }
   } catch (error: any) {
     console.error('Error fetching products with stock:', error);
     res.status(500).json({
