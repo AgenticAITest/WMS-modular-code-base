@@ -9,6 +9,7 @@ import { eq, and, desc, count, ilike, or, sql, sum } from 'drizzle-orm';
 import { checkModuleAuthorization } from '@server/middleware/moduleAuthMiddleware';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
+import { PODocumentGenerator } from '../services/poDocumentGenerator';
 
 const router = express.Router();
 router.use(authenticated());
@@ -651,11 +652,49 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
       .leftJoin(products, eq(purchaseOrderItems.productId, products.id))
       .where(eq(purchaseOrderItems.purchaseOrderId, orderId));
 
+    let documentInfo = null;
+    try {
+      const result = await PODocumentGenerator.generateAndSave(
+        {
+          id: completeOrder.id || orderId,
+          tenantId: completeOrder.tenantId || tenantId,
+          orderNumber: completeOrder.orderNumber || orderNumber,
+          orderDate: completeOrder.orderDate || new Date().toISOString().split('T')[0],
+          expectedDeliveryDate: completeOrder.expectedDeliveryDate,
+          totalAmount: completeOrder.totalAmount || '0.00',
+          notes: completeOrder.notes,
+          supplierName: completeOrder.supplierName || 'N/A',
+          supplierEmail: completeOrder.supplierEmail,
+          supplierPhone: completeOrder.supplierPhone,
+          locationAddress: completeOrder.locationAddress,
+          locationCity: completeOrder.locationCity,
+          locationState: completeOrder.locationState,
+          locationPostalCode: completeOrder.locationPostalCode,
+          locationCountry: completeOrder.locationCountry,
+          createdByName: completeOrder.createdByName,
+          items: orderItems.map(item => ({
+            productSku: item.productSku || 'N/A',
+            productName: item.productName || 'N/A',
+            orderedQuantity: item.orderedQuantity,
+            unitCost: item.unitCost || '0.00',
+            totalCost: item.totalCost || '0.00',
+            notes: item.notes
+          }))
+        },
+        currentUser?.id || ''
+      );
+      documentInfo = result;
+      console.log('[PO Document Generated]', result);
+    } catch (docError) {
+      console.error('Error generating PO document:', docError);
+    }
+
     res.status(201).json({
       success: true,
       data: {
         ...completeOrder,
         items: orderItems,
+        document: documentInfo
       },
       message: 'Purchase order created successfully',
     });
