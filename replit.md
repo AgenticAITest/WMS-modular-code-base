@@ -75,6 +75,16 @@ If you absolutely must start fresh (THIS WILL DELETE ALL DATA):
 - Type-safe metadata (sizes, timestamps, signer info)
 - Can index specific JSON fields if needed
 
+**✅ PO HTML Document Generation - IMPLEMENTED:**
+- **Service**: `PODocumentGenerator` in `src/modules/purchase-order/server/services/poDocumentGenerator.ts`
+- **Auto-generation on PO creation**: HTML document generated immediately when PO is created (POST /orders)
+- **Auto-regeneration on approval**: New version created when PO status changes to "approved" (PUT /orders/:id)
+- **Versioning**: Each regeneration increments version number (v1, v2, v3...)
+- **Error isolation**: Document generation failures don't break PO creation/approval workflow
+- **Template**: Professional HTML template with company header, supplier info, itemized table, and totals
+- **File path**: `public/documents/tenants/{tenantId}/po/{year}/{orderNumber}.html`
+- **Database record**: Entry in `generated_documents` table with file metadata and version tracking
+
 ## System Architecture
 
 ### Tech Stack
