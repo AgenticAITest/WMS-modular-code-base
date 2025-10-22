@@ -4,6 +4,7 @@ import { purchaseOrders, purchaseOrderItems } from '../lib/db/schemas/purchaseOr
 import { suppliers, supplierLocations, products } from '@modules/master-data/server/lib/db/schemas/masterData';
 import { inventoryItems } from '@modules/inventory-items/server/lib/db/schemas/inventoryItems';
 import { user } from '@server/lib/db/schema/system';
+import { documentNumberConfig } from '@modules/document-numbering/server/lib/db/schemas/documentNumbering';
 import { authenticated, authorized } from '@server/middleware/authMiddleware';
 import { eq, and, desc, count, ilike, or, sql, sum } from 'drizzle-orm';
 import { checkModuleAuthorization } from '@server/middleware/moduleAuthMiddleware';
@@ -502,17 +503,49 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
       });
     }
 
-    // Generate PO number via document numbering service
+    // Fetch document numbering configuration to get default prefix
+    const [docConfig] = await db
+      .select()
+      .from(documentNumberConfig)
+      .where(
+        and(
+          eq(documentNumberConfig.tenantId, tenantId),
+          eq(documentNumberConfig.documentType, 'PO'),
+          eq(documentNumberConfig.isActive, true)
+        )
+      )
+      .limit(1);
+
+    if (!docConfig) {
+      return res.status(500).json({
+        success: false,
+        message: 'Document numbering configuration not found for PO',
+      });
+    }
+
+    // Generate PO number via document numbering service with dynamic prefix
     let orderNumber: string;
     let documentHistoryId: string;
     
     try {
+      const generatePayload: any = {
+        documentType: 'PO',
+        documentTableName: 'purchase_orders',
+      };
+
+      // Add prefix1 if configured
+      if (docConfig.prefix1DefaultValue) {
+        generatePayload.prefix1 = docConfig.prefix1DefaultValue;
+      }
+
+      // Add prefix2 if configured
+      if (docConfig.prefix2DefaultValue) {
+        generatePayload.prefix2 = docConfig.prefix2DefaultValue;
+      }
+
       const docNumberResponse = await axios.post(
         'http://localhost:5000/api/modules/document-numbering/generate',
-        {
-          documentType: 'PO',
-          documentTableName: 'purchase_orders',
-        },
+        generatePayload,
         {
           headers: {
             Authorization: req.headers.authorization,
