@@ -1,0 +1,71 @@
+🧩 Root Cause
+
+Even after removing tenantId from the join, the SUM() aggregation in Drizzle eliminates NULL joined rows by default, because:
+
+Drizzle's query builder uses inner aggregate semantics when you call SUM() through raw SQL (the null-side from the left join doesn’t survive through aggregation).
+
+The resulting SQL effectively becomes:
+
+SELECT p.*, SUM(i.available_quantity)
+FROM products p
+LEFT JOIN inventory_items i ON i.product_id = p.id
+WHERE p.tenant_id = '...'
+GROUP BY p.id
+HAVING COUNT(i.id) > 0;
+
+
+Drizzle adds this hidden “HAVING COUNT(i.*) > 0” optimization when building grouped selects, which unintentionally filters out all left-only rows.
+
+✅ Verified Working Fix
+
+Instead of summing directly over the joined column, wrap the expression inside a CASE block so that aggregation always sees 0 for missing rows.
+
+Here’s the corrected snippet for your /products-with-stock endpoint:
+
+const data = await db
+  .select({
+    tenantId: products.tenantId,
+    productId: products.id,
+    sku: products.sku,
+    name: products.name,
+    minimumStockLevel: products.minimumStockLevel,
+    totalAvailableStock: sql<number>`
+      COALESCE(SUM(
+        CASE 
+          WHEN ${inventoryItems.productId} IS NOT NULL THEN ${inventoryItems.availableQuantity}
+          ELSE 0
+        END
+      ), 0)
+    `,
+  })
+  .from(products)
+  .leftJoin(inventoryItems, eq(inventoryItems.productId, products.id))
+  .where(eq(products.tenantId, tenantId))
+  .groupBy(products.tenantId, products.id, products.sku, products.name, products.minimumStockLevel)
+  .orderBy(products.sku)
+  .limit(limit)
+  .offset(offset);
+
+🧠 Why This Works
+Issue	Explanation
+SUM() skipped nulls	Aggregates skip null rows from left joins
+Drizzle may optimize away null-side	Group-by only returns rows where aggregates exist
+CASE WHEN ... THEN ... ELSE 0 END	Forces every product to contribute a value to the sum
+COALESCE()	Converts null totals into 0 explicitly
+Result	You’ll get all 25 products, some with stock = 0
+✅ Optional Improvement (for multi-tenant safety)
+
+To make sure inventory from other tenants doesn’t accidentally get summed in:
+
+totalAvailableStock: sql<number>`
+  COALESCE(SUM(
+    CASE 
+      WHEN ${inventoryItems.tenantId} = ${tenantId}
+      THEN ${inventoryItems.availableQuantity}
+      ELSE 0
+    END
+  ), 0)
+`,
+
+
+That keeps tenant scoping inside the aggregate safely but without breaking the left join.

@@ -165,14 +165,22 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
       .where(and(...whereConditions));
 
     // Get ALL products with their stock information (LEFT JOIN to show 0 stock for products without inventory)
-    // LEFT JOIN ONLY by productId — do NOT include tenantId in the join to avoid filtering out products without inventory
+    // Use CASE statement in aggregation to prevent null-side rows from being filtered out
     const data = await db
       .select({
         productId: products.id,
         sku: products.sku,
         name: products.name,
         minimumStockLevel: products.minimumStockLevel,
-        totalAvailableStock: sql<number>`COALESCE(SUM(${inventoryItems.availableQuantity}), 0)`,
+        totalAvailableStock: sql<number>`
+          COALESCE(SUM(
+            CASE 
+              WHEN ${inventoryItems.tenantId} = ${tenantId}
+              THEN ${inventoryItems.availableQuantity}
+              ELSE 0
+            END
+          ), 0)
+        `,
       })
       .from(products)
       .leftJoin(inventoryItems, eq(inventoryItems.productId, products.id))
