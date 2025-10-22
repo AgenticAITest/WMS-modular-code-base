@@ -211,7 +211,7 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[90rem] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[90rem] sm:max-w-[90rem] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Purchase Order</DialogTitle>
         </DialogHeader>
@@ -254,7 +254,7 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
 
             <div className="space-y-2">
               <Label htmlFor="warehouse">
-                Delivery Warehouse <span className="text-destructive">*</span>
+                Delivery Address <span className="text-destructive">*</span>
               </Label>
               <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
                 <SelectTrigger>

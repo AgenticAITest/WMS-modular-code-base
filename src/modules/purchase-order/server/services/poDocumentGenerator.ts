@@ -291,7 +291,7 @@ export class PODocumentGenerator {
   
   <div class="document-info" style="margin-bottom: 30px;">
     <div class="info-section">
-      <h2>Delivery Warehouse</h2>
+      <h2>Delivery Address</h2>
       <div class="company-name">${poData.warehouseName || 'N/A'}</div>
       <div class="detail-line">${poData.warehouseAddress || 'Address not specified'}</div>
     </div>
