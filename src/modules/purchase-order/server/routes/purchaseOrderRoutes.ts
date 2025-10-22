@@ -177,7 +177,8 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
       `));
       const totalCount = parseInt(countResult[0].count);
 
-      // Execute query using temporary views (no WHERE clause needed)
+      // Execute query using temporary views with pre-aggregated subquery
+      // This avoids GROUP BY filtering issues by aggregating inventory first
       const data = await db.execute<{
         product_id: string;
         sku: string;
@@ -190,12 +191,15 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
           p.sku,
           p.name,
           p.minimum_stock_level,
-          COALESCE(SUM(i.available_quantity), 0) as total_available_stock
+          COALESCE(i.available_quantity, 0) as total_available_stock
         FROM ${viewNameProducts} p
-        LEFT JOIN ${viewNameInventory} i ON i.product_id = p.id
+        LEFT JOIN (
+          SELECT product_id, SUM(available_quantity) AS available_quantity
+          FROM ${viewNameInventory}
+          GROUP BY product_id
+        ) i ON i.product_id = p.id
         WHERE 1=1
         ${search ? `AND (p.sku ILIKE '%${search}%' OR p.name ILIKE '%${search}%')` : ''}
-        GROUP BY p.id, p.sku, p.name, p.minimum_stock_level
         ORDER BY p.sku
         LIMIT ${limit}
         OFFSET ${offset}
@@ -209,6 +213,9 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
         minimumStockLevel: row.minimum_stock_level,
         totalAvailableStock: parseInt(row.total_available_stock),
       }));
+
+      console.log(`✅ Products query returned ${formattedData.length} products for tenant ${tenantId}`);
+      console.log(`First 3 SKUs:`, formattedData.slice(0, 3).map(p => p.sku));
 
       res.json({
         success: true,
