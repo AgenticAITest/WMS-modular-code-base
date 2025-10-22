@@ -146,6 +146,9 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
     const search = req.query.search as string;
     const offset = (page - 1) * limit;
 
+    console.log('🔍 TENANT ID:', tenantId);
+    console.log('🔍 USER:', req.user?.email);
+
     // Build WHERE conditions for products
     const whereConditions = [eq(products.tenantId, tenantId)];
     
