@@ -165,6 +165,7 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
       .where(and(...whereConditions));
 
     // Get ALL products with their stock information (LEFT JOIN to show 0 stock for products without inventory)
+    // LEFT JOIN ONLY by productId — do NOT include tenantId in the join to avoid filtering out products without inventory
     const data = await db
       .select({
         productId: products.id,
@@ -174,10 +175,7 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
         totalAvailableStock: sql<number>`COALESCE(SUM(${inventoryItems.availableQuantity}), 0)`,
       })
       .from(products)
-      .leftJoin(inventoryItems, and(
-        eq(inventoryItems.productId, products.id),
-        eq(inventoryItems.tenantId, tenantId)
-      ))
+      .leftJoin(inventoryItems, eq(inventoryItems.productId, products.id))
       .where(and(...whereConditions))
       .groupBy(products.id, products.sku, products.name, products.minimumStockLevel)
       .orderBy(products.sku)

@@ -1,0 +1,56 @@
+Even though your simplified the join, this line remains the real issue:
+
+.leftJoin(inventoryItems, and(
+  eq(inventoryItems.productId, products.id),
+  eq(inventoryItems.tenantId, tenantId)
+))
+.where(and(...whereConditions))
+
+
+In Drizzle ORM (Postgres dialect), this generates SQL similar to:
+
+SELECT ...
+FROM products
+LEFT JOIN inventory_items
+  ON inventory_items.product_id = products.id
+  AND inventory_items.tenant_id = $1
+WHERE products.tenant_id = $1
+GROUP BY ...
+
+
+That looks correct — but Drizzle applies query transformations internally such that the tenantId filter in the join still suppresses rows where no inventory exists.
+
+This is why you only see 2 rows: those are the only products with matching inventory records.
+
+To reproduce the correct behavior, you must remove tenant filtering inside the join and instead handle tenant scoping exclusively in the outer WHERE clause.
+
+✅ Corrected Drizzle Implementation
+
+Here’s the minimal, correct version that will return all 25 products, matching your SQL test result exactly:
+
+const data = await db
+  .select({
+    tenantId: products.tenantId,
+    productId: products.id,
+    sku: products.sku,
+    name: products.name,
+    minimumStockLevel: products.minimumStockLevel,
+    totalAvailableStock: sql<number>`COALESCE(SUM(${inventoryItems.availableQuantity}), 0)`
+  })
+  .from(products)
+  // ✅ LEFT JOIN ONLY by productId — do NOT include tenantId in the join
+  .leftJoin(inventoryItems, eq(inventoryItems.productId, products.id))
+  // ✅ Filter tenantId only in WHERE (on products)
+  .where(eq(products.tenantId, tenantId))
+  .groupBy(products.tenantId, products.id, products.sku, products.name, products.minimumStockLevel)
+  .orderBy(products.sku)
+  .limit(limit)
+  .offset(offset);
+
+🔧 Why This Works
+
+LEFT JOIN now keeps all products, even when no inventory exists.
+
+The tenant filter applies only to the products table (the “outer” table).
+
+Products without inventory entries remain visible with totalAvailableStock = 0.
