@@ -148,6 +148,7 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
 
     // Build search condition with proper parameterization to prevent SQL injection
     const searchPattern = search ? `%${search}%` : null;
+    console.log('🔍 GET /products-with-stock called:', { tenantId, page, limit, search, searchPattern });
 
     // Use CTE (Common Table Expression) in a single SQL statement
     // This solves the connection pooling issue with temp views
