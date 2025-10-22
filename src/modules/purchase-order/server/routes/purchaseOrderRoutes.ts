@@ -3,6 +3,7 @@ import { db } from '@server/lib/db';
 import { purchaseOrders, purchaseOrderItems } from '../lib/db/schemas/purchaseOrder';
 import { suppliers, supplierLocations, products } from '@modules/master-data/server/lib/db/schemas/masterData';
 import { inventoryItems } from '@modules/inventory-items/server/lib/db/schemas/inventoryItems';
+import { warehouses } from '@modules/warehouse-setup/server/lib/db/schemas/warehouseSetup';
 import { user } from '@server/lib/db/schema/system';
 import { documentNumberConfig } from '@modules/document-numbering/server/lib/db/schemas/documentNumbering';
 import { authenticated, authorized } from '@server/middleware/authMiddleware';
@@ -145,8 +146,8 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
     const search = req.query.search as string;
     const offset = (page - 1) * limit;
 
-    // Build where conditions for inventory items
-    const whereConditions = [eq(inventoryItems.tenantId, tenantId)];
+    // Build where conditions for products
+    const whereConditions = [eq(products.tenantId, tenantId)];
     
     if (search) {
       whereConditions.push(
@@ -157,14 +158,13 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
       );
     }
 
-    // Get total count of unique products in inventory
+    // Get total count of all products
     const [totalResult] = await db
-      .select({ count: sql<number>`COUNT(DISTINCT ${inventoryItems.productId})` })
-      .from(inventoryItems)
-      .innerJoin(products, eq(inventoryItems.productId, products.id))
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(products)
       .where(and(...whereConditions));
 
-    // Get inventory items grouped by product with aggregated stock
+    // Get ALL products with their stock information (LEFT JOIN to show 0 stock for products without inventory)
     const data = await db
       .select({
         productId: products.id,
@@ -173,8 +173,11 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
         minimumStockLevel: products.minimumStockLevel,
         totalAvailableStock: sql<number>`COALESCE(SUM(${inventoryItems.availableQuantity}), 0)`,
       })
-      .from(inventoryItems)
-      .innerJoin(products, eq(inventoryItems.productId, products.id))
+      .from(products)
+      .leftJoin(inventoryItems, and(
+        eq(inventoryItems.productId, products.id),
+        eq(inventoryItems.tenantId, tenantId)
+      ))
       .where(and(...whereConditions))
       .groupBy(products.id, products.sku, products.name, products.minimumStockLevel)
       .orderBy(products.sku)
@@ -192,10 +195,10 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
       }
     });
   } catch (error: any) {
-    console.error('Error fetching inventory items:', error);
+    console.error('Error fetching products with stock:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch inventory items',
+      message: 'Failed to fetch products',
       error: error.message
     });
   }
@@ -277,6 +280,9 @@ router.get('/orders', authorized('ADMIN', 'purchase-order.view'), async (req, re
         supplierId: purchaseOrders.supplierId,
         supplierName: suppliers.name,
         supplierLocationId: purchaseOrders.supplierLocationId,
+        warehouseId: purchaseOrders.warehouseId,
+        warehouseName: warehouses.name,
+        warehouseAddress: warehouses.address,
         status: purchaseOrders.status,
         workflowState: purchaseOrders.workflowState,
         orderDate: purchaseOrders.orderDate,
@@ -290,6 +296,7 @@ router.get('/orders', authorized('ADMIN', 'purchase-order.view'), async (req, re
       })
       .from(purchaseOrders)
       .leftJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
+      .leftJoin(warehouses, eq(purchaseOrders.warehouseId, warehouses.id))
       .leftJoin(user, eq(purchaseOrders.createdBy, user.id))
       .where(and(...whereConditions))
       .orderBy(desc(purchaseOrders.createdAt))
@@ -483,6 +490,7 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
     const { 
       supplierId, 
       supplierLocationId,
+      warehouseId,
       expectedDeliveryDate,
       notes,
       items = []
@@ -493,6 +501,13 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
       return res.status(400).json({
         success: false,
         message: 'Supplier is required',
+      });
+    }
+
+    if (!warehouseId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery warehouse is required',
       });
     }
 
@@ -589,6 +604,7 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
         orderNumber,
         supplierId,
         supplierLocationId: supplierLocationId || null,
+        warehouseId: warehouseId || null,
         status: 'pending',
         workflowState: 'approve',
         orderDate,
@@ -634,7 +650,7 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
 
     await db.insert(purchaseOrderItems).values(itemsToInsert);
 
-    // Fetch the complete PO with supplier and items for response
+    // Fetch the complete PO with supplier, warehouse and items for response
     const [completeOrder] = await db
       .select({
         id: purchaseOrders.id,
@@ -650,6 +666,9 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
         locationState: supplierLocations.state,
         locationPostalCode: supplierLocations.postalCode,
         locationCountry: supplierLocations.country,
+        warehouseId: purchaseOrders.warehouseId,
+        warehouseName: warehouses.name,
+        warehouseAddress: warehouses.address,
         status: purchaseOrders.status,
         workflowState: purchaseOrders.workflowState,
         orderDate: purchaseOrders.orderDate,
@@ -664,6 +683,7 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
       .from(purchaseOrders)
       .leftJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
       .leftJoin(supplierLocations, eq(purchaseOrders.supplierLocationId, supplierLocations.id))
+      .leftJoin(warehouses, eq(purchaseOrders.warehouseId, warehouses.id))
       .leftJoin(user, eq(purchaseOrders.createdBy, user.id))
       .where(eq(purchaseOrders.id, orderId));
 
@@ -704,6 +724,8 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
           locationState: completeOrder.locationState,
           locationPostalCode: completeOrder.locationPostalCode,
           locationCountry: completeOrder.locationCountry,
+          warehouseName: completeOrder.warehouseName || 'N/A',
+          warehouseAddress: completeOrder.warehouseAddress || 'N/A',
           createdByName: completeOrder.createdByName,
           items: orderItems.map(item => ({
             productSku: item.productSku || 'N/A',
@@ -831,6 +853,9 @@ router.put('/orders/:id', authorized('ADMIN', 'purchase-order.edit'), async (req
             locationState: supplierLocations.state,
             locationPostalCode: supplierLocations.postalCode,
             locationCountry: supplierLocations.country,
+            warehouseId: purchaseOrders.warehouseId,
+            warehouseName: warehouses.name,
+            warehouseAddress: warehouses.address,
             status: purchaseOrders.status,
             workflowState: purchaseOrders.workflowState,
             orderDate: purchaseOrders.orderDate,
@@ -845,6 +870,7 @@ router.put('/orders/:id', authorized('ADMIN', 'purchase-order.edit'), async (req
           .from(purchaseOrders)
           .leftJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
           .leftJoin(supplierLocations, eq(purchaseOrders.supplierLocationId, supplierLocations.id))
+          .leftJoin(warehouses, eq(purchaseOrders.warehouseId, warehouses.id))
           .leftJoin(user, eq(purchaseOrders.createdBy, user.id))
           .where(eq(purchaseOrders.id, id));
 
@@ -883,6 +909,8 @@ router.put('/orders/:id', authorized('ADMIN', 'purchase-order.edit'), async (req
             locationState: completeOrder.locationState,
             locationPostalCode: completeOrder.locationPostalCode,
             locationCountry: completeOrder.locationCountry,
+            warehouseName: completeOrder.warehouseName || 'N/A',
+            warehouseAddress: completeOrder.warehouseAddress || 'N/A',
             createdByName: completeOrder.createdByName,
             items: orderItems.map(item => ({
               productSku: item.productSku || 'N/A',

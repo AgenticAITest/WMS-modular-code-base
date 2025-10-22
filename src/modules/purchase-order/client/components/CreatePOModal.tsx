@@ -42,6 +42,8 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
   const [selectedSupplier, setSelectedSupplier] = useState<string>('');
   const [selectedSupplierLocation, setSelectedSupplierLocation] = useState<string>('');
   const [supplierLocations, setSupplierLocations] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>('');
   const [products, setProducts] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -53,6 +55,7 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
   useEffect(() => {
     if (open) {
       fetchSuppliers();
+      fetchWarehouses();
       fetchProducts();
     }
   }, [open]);
@@ -87,6 +90,18 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
       }
     } catch (error) {
       console.error('Error fetching supplier locations:', error);
+    }
+  };
+
+  const fetchWarehouses = async () => {
+    try {
+      const response = await axios.get('/api/modules/warehouse-setup/warehouses', {
+        params: { page: 1, limit: 100 },
+      });
+      setWarehouses(response.data.data || []);
+    } catch (error) {
+      console.error('Error fetching warehouses:', error);
+      toast.error('Failed to fetch warehouses');
     }
   };
 
@@ -156,6 +171,11 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
       return;
     }
 
+    if (!selectedWarehouse) {
+      toast.error('Please select a delivery warehouse');
+      return;
+    }
+
     if (selectedItems.size === 0) {
       toast.error('Please select at least one item');
       return;
@@ -173,6 +193,7 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
     const poData = {
       supplierId: selectedSupplier,
       supplierLocationId: selectedSupplierLocation || undefined,
+      warehouseId: selectedWarehouse,
       expectedDeliveryDate: expectedDeliveryDate || undefined,
       notes: notes || undefined,
       items: Array.from(selectedItems.values()),
@@ -190,7 +211,7 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[90rem] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Purchase Order</DialogTitle>
         </DialogHeader>
@@ -225,6 +246,24 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
                   {supplierLocations.map((location) => (
                     <SelectItem key={location.id} value={location.id}>
                       {location.locationType} - {location.city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="warehouse">
+                Delivery Warehouse <span className="text-destructive">*</span>
+              </Label>
+              <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select delivery warehouse" />
+                </SelectTrigger>
+                <SelectContent>
+                  {warehouses.map((warehouse) => (
+                    <SelectItem key={warehouse.id} value={warehouse.id}>
+                      {warehouse.name} - {warehouse.address}
                     </SelectItem>
                   ))}
                 </SelectContent>

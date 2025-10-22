@@ -2,6 +2,7 @@ import { relations } from 'drizzle-orm';
 import { date, decimal, index, integer, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tenant, user } from '@server/lib/db/schema/system';
 import { suppliers, supplierLocations, products } from '@modules/master-data/server/lib/db/schemas/masterData';
+import { warehouses } from '@modules/warehouse-setup/server/lib/db/schemas/warehouseSetup';
 
 export const purchaseOrders = pgTable('purchase_orders', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -14,6 +15,8 @@ export const purchaseOrders = pgTable('purchase_orders', {
     .references(() => suppliers.id),
   supplierLocationId: uuid('supplier_location_id')
     .references(() => supplierLocations.id),
+  warehouseId: uuid('warehouse_id')
+    .references(() => warehouses.id),
   status: varchar('status', { 
     length: 50, 
     enum: ['pending', 'approved', 'received', 'completed'] 
@@ -36,6 +39,7 @@ export const purchaseOrders = pgTable('purchase_orders', {
     index('purchase_orders_tenant_idx').on(t.tenantId),
     index('purchase_orders_supplier_idx').on(t.supplierId),
     index('purchase_orders_status_idx').on(t.status),
+    index('purchase_orders_warehouse_idx').on(t.warehouseId),
   ]
 );
 
@@ -79,6 +83,10 @@ export const purchaseOrdersRelations = relations(purchaseOrders, ({ one, many })
   supplierLocation: one(supplierLocations, {
     fields: [purchaseOrders.supplierLocationId],
     references: [supplierLocations.id],
+  }),
+  warehouse: one(warehouses, {
+    fields: [purchaseOrders.warehouseId],
+    references: [warehouses.id],
   }),
   creator: one(user, {
     fields: [purchaseOrders.createdBy],
