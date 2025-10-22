@@ -1,6 +1,6 @@
 import { relations } from 'drizzle-orm';
-import { boolean, integer, pgTable, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
-import { tenant } from '@server/lib/db/schema/system';
+import { boolean, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+import { tenant, user } from '@server/lib/db/schema/system';
 
 /**
  * Document Number Configuration Table
@@ -181,6 +181,80 @@ export const documentNumberHistoryRelations = relations(documentNumberHistory, (
   }),
 }));
 
+/**
+ * Generated Documents Table
+ * Stores HTML documents and related files (signatures, attachments) as file references
+ * Allows reprinting without regenerating or storing binary blobs in database
+ */
+export const generatedDocuments = pgTable('generated_documents', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenant.id),
+  
+  // Document type - should match documentNumberConfig.documentType
+  // Not enforced as FK to allow flexibility for custom document types
+  documentType: varchar('document_type', { length: 50 }).notNull(), // e.g., 'purchase_order', 'sales_order', 'packing_slip'
+  
+  // The formatted document number (e.g., 'PO-2510-WH1-LOCAL-0001')
+  documentNumber: varchar('document_number', { length: 100 }).notNull(),
+  
+  // Reference to source record
+  referenceType: varchar('reference_type', { length: 50 }).notNull(), // e.g., 'purchase_order', 'sales_order'
+  referenceId: uuid('reference_id').notNull(), // UUID of the source record
+  
+  // File storage metadata (JSONB for flexibility)
+  // Example structure:
+  // {
+  //   "html": {
+  //     "path": "documents/tenants/123/po/2025/PO-2510-0001.html",
+  //     "size": 15234,
+  //     "generated_at": "2025-10-22T10:30:00Z"
+  //   },
+  //   "signature": {
+  //     "path": "documents/tenants/123/signatures/sig-uuid.png",
+  //     "size": 8192,
+  //     "signed_by": "user-uuid",
+  //     "signed_at": "2025-10-22T11:00:00Z"
+  //   },
+  //   "attachments": [
+  //     { "path": "...", "name": "invoice.pdf", "size": 12345 }
+  //   ]
+  // }
+  files: jsonb('files').notNull(),
+  
+  // Version tracking for regenerations
+  version: integer('version').default(1).notNull(),
+  
+  // Audit fields
+  generatedBy: uuid('generated_by')
+    .notNull()
+    .references(() => user.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
+},
+  (t) => [
+    // Index for looking up documents by type and tenant
+    uniqueIndex('gen_docs_tenant_type_idx').on(t.tenantId, t.documentType),
+    // Index for finding all versions of a specific document
+    uniqueIndex('gen_docs_ref_idx').on(t.tenantId, t.referenceType, t.referenceId),
+    // Index for quick document number lookup
+    uniqueIndex('gen_docs_number_idx').on(t.tenantId, t.documentNumber),
+  ]
+);
+
+// Relations
+export const generatedDocumentsRelations = relations(generatedDocuments, ({ one }) => ({
+  tenant: one(tenant, {
+    fields: [generatedDocuments.tenantId],
+    references: [tenant.id],
+  }),
+  generatedByUser: one(user, {
+    fields: [generatedDocuments.generatedBy],
+    references: [user.id],
+  }),
+}));
+
 // Types
 export type DocumentNumberConfig = typeof documentNumberConfig.$inferSelect;
 export type NewDocumentNumberConfig = typeof documentNumberConfig.$inferInsert;
@@ -190,3 +264,6 @@ export type NewDocumentSequenceTracker = typeof documentSequenceTracker.$inferIn
 
 export type DocumentNumberHistory = typeof documentNumberHistory.$inferSelect;
 export type NewDocumentNumberHistory = typeof documentNumberHistory.$inferInsert;
+
+export type GeneratedDocument = typeof generatedDocuments.$inferSelect;
+export type NewGeneratedDocument = typeof generatedDocuments.$inferInsert;

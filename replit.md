@@ -40,6 +40,41 @@ If you absolutely must start fresh (THIS WILL DELETE ALL DATA):
 
 **Important**: When creating Purchase Orders (PO), the SKU selection should ALWAYS query the `inventory_items` table, NOT the `products` table. This shows items already in the warehouse system that need reordering.
 
+## Document Storage Strategy - CRITICAL
+**Generated Documents (PO, SO, Packing Slips, etc.):**
+- **Storage Method**: File-based storage (NOT database blobs) to keep database lean and efficient
+- **File Format**: HTML for all printable documents (allows reprinting anytime without regeneration)
+- **Additional Files**: Signatures (PNG/JPG), attachments (PDF) stored alongside HTML
+- **Metadata Storage**: JSONB column in `generated_documents` table tracks file paths and metadata
+- **File Organization**: `public/documents/tenants/{tenantId}/{docType}/{year}/` structure
+- **Benefits**: Easy reprinting, CDN-ready, no blob storage costs, automatic backup with files
+
+**JSONB File Metadata Structure:**
+```json
+{
+  "html": {
+    "path": "documents/tenants/uuid/po/2025/PO-2510-0001.html",
+    "size": 15234,
+    "generated_at": "2025-10-22T10:30:00Z"
+  },
+  "signature": {
+    "path": "documents/tenants/uuid/signatures/sig-uuid.png",
+    "size": 8192,
+    "signed_by": "user-uuid",
+    "signed_at": "2025-10-22T11:00:00Z"
+  },
+  "attachments": [
+    { "path": "...", "name": "invoice.pdf", "size": 12345 }
+  ]
+}
+```
+
+**Why JSONB over comma-separated strings:**
+- Structured and queryable
+- Extensible without schema changes
+- Type-safe metadata (sizes, timestamps, signer info)
+- Can index specific JSON fields if needed
+
 ## System Architecture
 
 ### Tech Stack
