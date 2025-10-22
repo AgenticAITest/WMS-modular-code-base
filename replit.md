@@ -38,7 +38,7 @@ If you absolutely must start fresh (THIS WILL DELETE ALL DATA):
 - **`products` table**: Master SKU list defining what types of SKUs the warehouse CAN store. This is the product catalog/master data.
 - **`inventory_items` table**: Actual stock information showing what the warehouse HAS in stock right now. This includes quantities, locations, batches, etc.
 
-**Important**: When creating Purchase Orders (PO), the SKU selection should ALWAYS query the `inventory_items` table, NOT the `products` table. This shows items already in the warehouse system that need reordering.
+**UPDATED (Oct 22, 2025)**: When creating Purchase Orders (PO), the SKU selection now displays ALL products from the `products` table (master catalog) with their current stock levels via LEFT JOIN to `inventory_items`. This allows ordering new SKUs that aren't yet in inventory, while showing existing stock levels for informed reordering decisions. Products without inventory show 0 stock.
 
 ## Document Storage Strategy - CRITICAL
 **Generated Documents (PO, SO, Packing Slips, etc.):**
@@ -81,9 +81,14 @@ If you absolutely must start fresh (THIS WILL DELETE ALL DATA):
 - **Auto-regeneration on approval**: New version created when PO status changes to "approved" (PUT /orders/:id)
 - **Versioning**: Each regeneration increments version number (v1, v2, v3...)
 - **Error isolation**: Document generation failures don't break PO creation/approval workflow
-- **Template**: Professional HTML template with company header, supplier info, itemized table, and totals
+- **Template**: Professional HTML template with company header, supplier info, **delivery warehouse address**, itemized table, and totals
 - **File path**: `public/documents/tenants/{tenantId}/po/{year}/{orderNumber}.html`
 - **Database record**: Entry in `generated_documents` table with file metadata and version tracking
+- **Delivery Warehouse (Oct 22, 2025)**: 
+  - Added `warehouse_id` column to `purchase_orders` table with FK to `warehouses` table
+  - Warehouse selection required during PO creation (dropdown in CreatePOModal)
+  - Warehouse name and address displayed in dedicated "Delivery Warehouse" section in HTML documents
+  - All PO queries (list/detail/document generation) include warehouse data for consistency
 
 ## System Architecture
 
