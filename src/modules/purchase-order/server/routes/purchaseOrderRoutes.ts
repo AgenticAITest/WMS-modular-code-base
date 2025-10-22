@@ -739,10 +739,25 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
 router.put('/orders/:id', authorized('ADMIN', 'purchase-order.edit'), async (req, res) => {
   try {
     const tenantId = req.user!.activeTenantId;
+    const userId = req.user!.id;
     const { id } = req.params;
     const updateData = req.body;
 
-    // Remove fields that shouldn't be updated
+    const [existingOrder] = await db
+      .select()
+      .from(purchaseOrders)
+      .where(and(
+        eq(purchaseOrders.id, id),
+        eq(purchaseOrders.tenantId, tenantId)
+      ));
+
+    if (!existingOrder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Purchase order not found',
+      });
+    }
+
     delete updateData.id;
     delete updateData.tenantId;
     delete updateData.createdAt;
@@ -762,6 +777,95 @@ router.put('/orders/:id', authorized('ADMIN', 'purchase-order.edit'), async (req
         success: false,
         message: 'Purchase order not found',
       });
+    }
+
+    const isApproved = updateData.status === 'approved' && existingOrder.status !== 'approved';
+
+    if (isApproved) {
+      try {
+        const [completeOrder] = await db
+          .select({
+            id: purchaseOrders.id,
+            tenantId: purchaseOrders.tenantId,
+            orderNumber: purchaseOrders.orderNumber,
+            supplierId: purchaseOrders.supplierId,
+            supplierName: suppliers.name,
+            supplierEmail: suppliers.email,
+            supplierPhone: suppliers.phone,
+            supplierLocationId: purchaseOrders.supplierLocationId,
+            locationAddress: supplierLocations.address,
+            locationCity: supplierLocations.city,
+            locationState: supplierLocations.state,
+            locationPostalCode: supplierLocations.postalCode,
+            locationCountry: supplierLocations.country,
+            status: purchaseOrders.status,
+            workflowState: purchaseOrders.workflowState,
+            orderDate: purchaseOrders.orderDate,
+            expectedDeliveryDate: purchaseOrders.expectedDeliveryDate,
+            totalAmount: purchaseOrders.totalAmount,
+            notes: purchaseOrders.notes,
+            createdBy: purchaseOrders.createdBy,
+            createdByName: user.fullname,
+            createdAt: purchaseOrders.createdAt,
+            updatedAt: purchaseOrders.updatedAt,
+          })
+          .from(purchaseOrders)
+          .leftJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
+          .leftJoin(supplierLocations, eq(purchaseOrders.supplierLocationId, supplierLocations.id))
+          .leftJoin(user, eq(purchaseOrders.createdBy, user.id))
+          .where(eq(purchaseOrders.id, id));
+
+        const orderItems = await db
+          .select({
+            id: purchaseOrderItems.id,
+            purchaseOrderId: purchaseOrderItems.purchaseOrderId,
+            productId: purchaseOrderItems.productId,
+            productName: products.name,
+            productSku: products.sku,
+            orderedQuantity: purchaseOrderItems.orderedQuantity,
+            receivedQuantity: purchaseOrderItems.receivedQuantity,
+            unitCost: purchaseOrderItems.unitCost,
+            totalCost: purchaseOrderItems.totalCost,
+            expectedExpiryDate: purchaseOrderItems.expectedExpiryDate,
+            notes: purchaseOrderItems.notes,
+          })
+          .from(purchaseOrderItems)
+          .leftJoin(products, eq(purchaseOrderItems.productId, products.id))
+          .where(eq(purchaseOrderItems.purchaseOrderId, id));
+
+        await PODocumentGenerator.regenerateDocument(
+          {
+            id: completeOrder.id || id,
+            tenantId: completeOrder.tenantId || tenantId,
+            orderNumber: completeOrder.orderNumber || '',
+            orderDate: completeOrder.orderDate || new Date().toISOString().split('T')[0],
+            expectedDeliveryDate: completeOrder.expectedDeliveryDate,
+            totalAmount: completeOrder.totalAmount || '0.00',
+            notes: completeOrder.notes,
+            supplierName: completeOrder.supplierName || 'N/A',
+            supplierEmail: completeOrder.supplierEmail,
+            supplierPhone: completeOrder.supplierPhone,
+            locationAddress: completeOrder.locationAddress,
+            locationCity: completeOrder.locationCity,
+            locationState: completeOrder.locationState,
+            locationPostalCode: completeOrder.locationPostalCode,
+            locationCountry: completeOrder.locationCountry,
+            createdByName: completeOrder.createdByName,
+            items: orderItems.map(item => ({
+              productSku: item.productSku || 'N/A',
+              productName: item.productName || 'N/A',
+              orderedQuantity: item.orderedQuantity,
+              unitCost: item.unitCost || '0.00',
+              totalCost: item.totalCost || '0.00',
+              notes: item.notes
+            }))
+          },
+          userId
+        );
+        console.log('[PO Document Regenerated on Approval]', id);
+      } catch (docError) {
+        console.error('Error regenerating PO document on approval:', docError);
+      }
     }
 
     res.json({
