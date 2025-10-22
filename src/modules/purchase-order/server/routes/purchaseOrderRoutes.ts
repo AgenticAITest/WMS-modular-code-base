@@ -147,7 +147,7 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
     const offset = (page - 1) * limit;
 
     console.log('🔍 TENANT ID:', tenantId);
-    console.log('🔍 USER:', req.user?.email);
+    console.log('🔍 USER:', req.user?.username);
 
     // Build WHERE conditions for products
     const whereConditions = [eq(products.tenantId, tenantId)];
@@ -167,15 +167,20 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
       : sql``;
 
     // Get total count using raw SQL
+    console.log('🔍 Running COUNT query...');
     const countResult = await db.execute<{ count: string }>(sql`
       SELECT COUNT(*) as count
       FROM products p
       WHERE p.tenant_id = ${tenantId}
       ${searchCondition}
     `);
+    console.log('🔍 COUNT RESULT:', countResult);
+    console.log('🔍 COUNT RESULT LENGTH:', countResult.length);
+    console.log('🔍 COUNT VALUE:', countResult[0]);
     const totalCount = parseInt(countResult[0].count);
 
     // Execute raw SQL query to get all products with stock
+    console.log('🔍 Running products query with LIMIT:', limit, 'OFFSET:', offset);
     const data = await db.execute<{
       product_id: string;
       sku: string;
@@ -202,7 +207,8 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
     `);
 
     console.log('🔍 RAW SQL RESULT - Row count:', data.length);
-    console.log('🔍 First 3 rows:', data.slice(0, 3));
+    console.log('🔍 First 5 rows:', data.slice(0, 5));
+    console.log('🔍 Last row:', data[data.length - 1]);
 
     // Transform raw result to match expected format
     const formattedData = data.map(row => ({
