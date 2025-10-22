@@ -15,6 +15,7 @@ import documentNumberConfigRoutes from '../modules/document-numbering/server/rou
 import documentNumberGeneratorRoutes from '../modules/document-numbering/server/routes/documentNumberGeneratorRoutes';
 import documentNumberHistoryRoutes from '../modules/document-numbering/server/routes/documentNumberHistoryRoutes';
 import documentNumberTrackerRoutes from '../modules/document-numbering/server/routes/documentNumberTrackerRoutes';
+import generatedDocumentsRoutes from '../modules/document-numbering/server/routes/generatedDocumentsRoutes';
 import purchaseOrderRoutes from '../modules/purchase-order/server/routes/purchaseOrderRoutes';
 import workflowRoutes from '../modules/workflow/server/routes/workflowRoutes';
 import ViteExpress from "vite-express";
@@ -124,6 +125,7 @@ app.use('/api/modules/document-numbering', documentNumberConfigRoutes);
 app.use('/api/modules/document-numbering', documentNumberGeneratorRoutes);
 app.use('/api/modules/document-numbering', documentNumberHistoryRoutes);
 app.use('/api/modules/document-numbering', documentNumberTrackerRoutes);
+app.use('/api/modules/document-numbering', generatedDocumentsRoutes);
 
 // purchase-order routes
 app.use('/api/modules/purchase-order', purchaseOrderRoutes);
