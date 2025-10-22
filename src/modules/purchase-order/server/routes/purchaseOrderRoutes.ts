@@ -164,28 +164,32 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
       .from(products)
       .where(and(...whereConditions));
 
-    // Get ALL products with their stock information (LEFT JOIN to show 0 stock for products without inventory)
-    // Use CASE statement in aggregation to prevent null-side rows from being filtered out
+    // Pre-aggregate inventory stock per product in a subquery (CTE)
+    // This ensures we can LEFT JOIN it to products and keep all products visible
+    const stockSubquery = db.$with('stock_per_product').as(
+      db
+        .select({
+          productId: inventoryItems.productId,
+          totalAvailableStock: sql<number>`SUM(${inventoryItems.availableQuantity})`.as('total_available_stock'),
+        })
+        .from(inventoryItems)
+        .where(eq(inventoryItems.tenantId, tenantId))
+        .groupBy(inventoryItems.productId)
+    );
+
+    // Main query: LEFT JOIN products with aggregated stock subquery
     const data = await db
+      .with(stockSubquery)
       .select({
         productId: products.id,
         sku: products.sku,
         name: products.name,
         minimumStockLevel: products.minimumStockLevel,
-        totalAvailableStock: sql<number>`
-          COALESCE(SUM(
-            CASE 
-              WHEN ${inventoryItems.tenantId} = ${tenantId}
-              THEN ${inventoryItems.availableQuantity}
-              ELSE 0
-            END
-          ), 0)
-        `,
+        totalAvailableStock: sql<number>`COALESCE(${stockSubquery.totalAvailableStock}, 0)`.as('total_stock'),
       })
       .from(products)
-      .leftJoin(inventoryItems, eq(inventoryItems.productId, products.id))
+      .leftJoin(stockSubquery, eq(stockSubquery.productId, products.id))
       .where(and(...whereConditions))
-      .groupBy(products.id, products.sku, products.name, products.minimumStockLevel)
       .orderBy(products.sku)
       .limit(limit)
       .offset(offset);
