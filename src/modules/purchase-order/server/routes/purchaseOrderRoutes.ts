@@ -146,7 +146,7 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
     const search = req.query.search as string;
     const offset = (page - 1) * limit;
 
-    // Build where conditions for products
+    // Build WHERE conditions for products
     const whereConditions = [eq(products.tenantId, tenantId)];
     
     if (search) {
@@ -158,7 +158,7 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
       );
     }
 
-    // Get total count of all products
+    // Get total count of all products for the tenant
     const [totalResult] = await db
       .select({ count: sql<number>`COUNT(*)` })
       .from(products)
@@ -176,7 +176,7 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
       .from(products)
       .leftJoin(inventoryItems, and(
         eq(inventoryItems.productId, products.id),
-        eq(inventoryItems.tenantId, products.tenantId)
+        eq(inventoryItems.tenantId, tenantId)
       ))
       .where(and(...whereConditions))
       .groupBy(products.id, products.sku, products.name, products.minimumStockLevel)
