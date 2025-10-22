@@ -198,6 +198,9 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
       OFFSET ${offset}
     `);
 
+    console.log('🔍 RAW SQL RESULT - Row count:', data.length);
+    console.log('🔍 First 3 rows:', data.slice(0, 3));
+
     // Transform raw result to match expected format
     const formattedData = data.map(row => ({
       productId: row.product_id,
@@ -206,6 +209,8 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
       minimumStockLevel: row.minimum_stock_level,
       totalAvailableStock: parseInt(row.total_available_stock),
     }));
+
+    console.log('✅ FORMATTED DATA - Row count:', formattedData.length);
 
     res.json({
       success: true,
