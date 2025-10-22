@@ -6,6 +6,32 @@ This project is a comprehensive admin dashboard built with React, TypeScript, Vi
 ## User Preferences
 None specified yet
 
+## Development Troubleshooting
+
+### Code Changes Not Taking Effect
+**Issue**: Sometimes code changes (especially complex SQL queries or backend logic) may not reflect in the running application even after nodemon restarts.
+
+**Root Cause**: Vite caching and stale Node.js module cache can prevent new code from executing, particularly when:
+- Using Drizzle connection pooling with complex SQL queries
+- Making significant changes to backend routes
+- Modifying database query logic
+
+**Solution - Complete Cache Clear & Restart**:
+```bash
+# 1. Kill all Node processes
+pkill -f "node|vite|tsx"
+
+# 2. Clear Vite cache
+rm -rf node_modules/.vite && rm -rf .vite
+
+# 3. Restart server via workflow
+# Use workflows_set_run_config_tool or Replit UI
+```
+
+**When to Use**: If you've changed backend code but the old behavior persists despite nodemon restarts, a full cache clear is required.
+
+**Lesson Learned (Oct 22, 2025)**: Fixed PO product query using CTE (Common Table Expression) to solve PostgreSQL temp view + connection pooling issue. Changes only took effect after complete cache clear and restart.
+
 ## ✅ Database Seed Scripts - NOW SAFE!
 
 **UPDATED**: The seed scripts have been **PROTECTED** and will now check for existing data before seeding.
