@@ -1,5 +1,5 @@
-import { relations } from 'drizzle-orm';
-import { date, decimal, index, integer, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+import { relations, sql } from 'drizzle-orm';
+import { check, date, decimal, index, integer, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { tenant, user } from '@server/lib/db/schema/system';
 import { suppliers, supplierLocations, products } from '@modules/master-data/server/lib/db/schemas/masterData';
 import { warehouses } from '@modules/warehouse-setup/server/lib/db/schemas/warehouseSetup';
@@ -15,7 +15,11 @@ export const purchaseOrders = pgTable('purchase_orders', {
     .references(() => suppliers.id),
   supplierLocationId: uuid('supplier_location_id')
     .references(() => supplierLocations.id),
+  deliveryMethod: varchar('delivery_method', { length: 20 })
+    .notNull()
+    .default('delivery'),
   warehouseId: uuid('warehouse_id')
+    .notNull()
     .references(() => warehouses.id),
   status: varchar('status', { 
     length: 50, 
@@ -34,13 +38,20 @@ export const purchaseOrders = pgTable('purchase_orders', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
 },
-  (t) => [
-    uniqueIndex('purchase_orders_order_number_unique_idx').on(t.orderNumber),
-    index('purchase_orders_tenant_idx').on(t.tenantId),
-    index('purchase_orders_supplier_idx').on(t.supplierId),
-    index('purchase_orders_status_idx').on(t.status),
-    index('purchase_orders_warehouse_idx').on(t.warehouseId),
-  ]
+  (t) => ({
+    orderNumberUnique: uniqueIndex('purchase_orders_order_number_unique_idx').on(t.orderNumber),
+    tenantIdx: index('purchase_orders_tenant_idx').on(t.tenantId),
+    supplierIdx: index('purchase_orders_supplier_idx').on(t.supplierId),
+    statusIdx: index('purchase_orders_status_idx').on(t.status),
+    warehouseIdx: index('purchase_orders_warehouse_idx').on(t.warehouseId),
+    deliveryMethodCheck: check(
+      'delivery_method_check',
+      sql`(
+        (delivery_method = 'delivery') OR
+        (delivery_method = 'pickup' AND supplier_location_id IS NOT NULL)
+      )`
+    ),
+  })
 );
 
 export const purchaseOrderItems = pgTable('purchase_order_items', {
