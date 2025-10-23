@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@client/components/ui/table';
+import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
 import { Search, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -40,6 +41,7 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
 }) => {
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<string>('');
+  const [deliveryMethod, setDeliveryMethod] = useState<'delivery' | 'pickup'>('delivery');
   const [selectedSupplierLocation, setSelectedSupplierLocation] = useState<string>('');
   const [supplierLocations, setSupplierLocations] = useState<any[]>([]);
   const [warehouses, setWarehouses] = useState<any[]>([]);
@@ -172,7 +174,12 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
     }
 
     if (!selectedWarehouse) {
-      toast.error('Please select a delivery warehouse');
+      toast.error(deliveryMethod === 'delivery' ? 'Please select a delivery warehouse' : 'Please select a destination warehouse');
+      return;
+    }
+
+    if (deliveryMethod === 'pickup' && !selectedSupplierLocation) {
+      toast.error('Please select a pickup location');
       return;
     }
 
@@ -192,6 +199,7 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
 
     const poData = {
       supplierId: selectedSupplier,
+      deliveryMethod,
       supplierLocationId: selectedSupplierLocation || undefined,
       warehouseId: selectedWarehouse,
       expectedDeliveryDate: expectedDeliveryDate || undefined,
@@ -236,29 +244,43 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="location">Supplier Location</Label>
-              <Select value={selectedSupplierLocation} onValueChange={setSelectedSupplierLocation}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select location" />
-                </SelectTrigger>
-                <SelectContent>
-                  {supplierLocations.map((location) => (
-                    <SelectItem key={location.id} value={location.id}>
-                      {location.locationType} - {location.city}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-2 col-span-2">
+              <Label>
+                Fulfillment Method <span className="text-destructive">*</span>
+              </Label>
+              <RadioGroup
+                value={deliveryMethod}
+                onValueChange={(value: 'delivery' | 'pickup') => {
+                  setDeliveryMethod(value);
+                  // Reset supplier location when switching modes
+                  if (value === 'delivery') {
+                    setSelectedSupplierLocation('');
+                  }
+                }}
+                className="flex gap-6"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="delivery" id="delivery" />
+                  <Label htmlFor="delivery" className="font-normal cursor-pointer">
+                    Delivery (supplier delivers to our warehouse)
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="pickup" id="pickup" />
+                  <Label htmlFor="pickup" className="font-normal cursor-pointer">
+                    Pickup (we pick up from supplier location)
+                  </Label>
+                </div>
+              </RadioGroup>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="warehouse">
-                Delivery Address <span className="text-destructive">*</span>
+                {deliveryMethod === 'delivery' ? 'Delivery Address' : 'Destination Warehouse'} <span className="text-destructive">*</span>
               </Label>
               <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select delivery warehouse" />
+                  <SelectValue placeholder={deliveryMethod === 'delivery' ? 'Select delivery warehouse' : 'Select destination warehouse'} />
                 </SelectTrigger>
                 <SelectContent>
                   {warehouses.map((warehouse) => (
@@ -270,8 +292,30 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
               </Select>
             </div>
 
+            {deliveryMethod === 'pickup' && (
+              <div className="space-y-2">
+                <Label htmlFor="location">
+                  Pickup Location <span className="text-destructive">*</span>
+                </Label>
+                <Select value={selectedSupplierLocation} onValueChange={setSelectedSupplierLocation}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select pickup location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {supplierLocations.map((location) => (
+                      <SelectItem key={location.id} value={location.id}>
+                        {location.locationType} - {location.city}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-2">
-              <Label htmlFor="deliveryDate">Expected Delivery Date</Label>
+              <Label htmlFor="deliveryDate">
+                {deliveryMethod === 'delivery' ? 'Expected Delivery Date' : 'Expected Pickup Date'}
+              </Label>
               <Input
                 id="deliveryDate"
                 type="date"
