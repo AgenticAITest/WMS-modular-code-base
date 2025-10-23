@@ -27,6 +27,8 @@ router.use(checkModuleAuthorization('purchase-order'));
  *         - orderNumber
  *         - supplierId
  *         - orderDate
+ *         - deliveryMethod
+ *         - warehouseId
  *       properties:
  *         id:
  *           type: string
@@ -42,6 +44,16 @@ router.use(checkModuleAuthorization('purchase-order'));
  *         supplierLocationId:
  *           type: string
  *           format: uuid
+ *           description: Optional for delivery mode, required for pickup mode
+ *         deliveryMethod:
+ *           type: string
+ *           enum: [delivery, pickup]
+ *           default: delivery
+ *           description: Delivery method - 'delivery' (supplier delivers) or 'pickup' (tenant picks up)
+ *         warehouseId:
+ *           type: string
+ *           format: uuid
+ *           description: Destination warehouse (required for both delivery and pickup)
  *         status:
  *           type: string
  *           enum: [pending, approved, received, completed]
@@ -334,6 +346,7 @@ router.get('/orders', authorized('ADMIN', 'purchase-order.view'), async (req, re
         supplierId: purchaseOrders.supplierId,
         supplierName: suppliers.name,
         supplierLocationId: purchaseOrders.supplierLocationId,
+        deliveryMethod: purchaseOrders.deliveryMethod,
         warehouseId: purchaseOrders.warehouseId,
         warehouseName: warehouses.name,
         warehouseAddress: warehouses.address,
@@ -420,6 +433,10 @@ router.get('/orders/:id', authorized('ADMIN', 'purchase-order.view'), async (req
         supplierLocationId: purchaseOrders.supplierLocationId,
         locationAddress: supplierLocations.address,
         locationCity: supplierLocations.city,
+        deliveryMethod: purchaseOrders.deliveryMethod,
+        warehouseId: purchaseOrders.warehouseId,
+        warehouseName: warehouses.name,
+        warehouseAddress: warehouses.address,
         status: purchaseOrders.status,
         workflowState: purchaseOrders.workflowState,
         orderDate: purchaseOrders.orderDate,
@@ -434,6 +451,7 @@ router.get('/orders/:id', authorized('ADMIN', 'purchase-order.view'), async (req
       .from(purchaseOrders)
       .leftJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
       .leftJoin(supplierLocations, eq(purchaseOrders.supplierLocationId, supplierLocations.id))
+      .leftJoin(warehouses, eq(purchaseOrders.warehouseId, warehouses.id))
       .leftJoin(user, eq(purchaseOrders.createdBy, user.id))
       .where(and(
         eq(purchaseOrders.id, id),
@@ -544,6 +562,7 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
     const { 
       supplierId, 
       supplierLocationId,
+      deliveryMethod = 'delivery',
       warehouseId,
       expectedDeliveryDate,
       notes,
@@ -558,10 +577,24 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
       });
     }
 
+    if (!deliveryMethod || !['delivery', 'pickup'].includes(deliveryMethod)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery method must be either "delivery" or "pickup"',
+      });
+    }
+
     if (!warehouseId) {
       return res.status(400).json({
         success: false,
-        message: 'Delivery warehouse is required',
+        message: 'Destination warehouse is required',
+      });
+    }
+
+    if (deliveryMethod === 'pickup' && !supplierLocationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Supplier location is required for pickup mode',
       });
     }
 
@@ -658,7 +691,8 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
         orderNumber,
         supplierId,
         supplierLocationId: supplierLocationId || null,
-        warehouseId: warehouseId || null,
+        deliveryMethod,
+        warehouseId,
         status: 'pending',
         workflowState: 'approve',
         orderDate,
@@ -720,6 +754,7 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
         locationState: supplierLocations.state,
         locationPostalCode: supplierLocations.postalCode,
         locationCountry: supplierLocations.country,
+        deliveryMethod: purchaseOrders.deliveryMethod,
         warehouseId: purchaseOrders.warehouseId,
         warehouseName: warehouses.name,
         warehouseAddress: warehouses.address,
@@ -867,6 +902,35 @@ router.put('/orders/:id', authorized('ADMIN', 'purchase-order.edit'), async (req
       });
     }
 
+    // Validate deliveryMethod if it's being updated
+    if (updateData.deliveryMethod && !['delivery', 'pickup'].includes(updateData.deliveryMethod)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery method must be either "delivery" or "pickup"',
+      });
+    }
+
+    // Validate pickup mode requirements
+    const finalDeliveryMethod = updateData.deliveryMethod || existingOrder.deliveryMethod;
+    const finalSupplierLocationId = updateData.supplierLocationId !== undefined 
+      ? updateData.supplierLocationId 
+      : existingOrder.supplierLocationId;
+
+    if (finalDeliveryMethod === 'pickup' && !finalSupplierLocationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Supplier location is required for pickup mode',
+      });
+    }
+
+    // Validate warehouseId requirement
+    if (updateData.warehouseId === null || updateData.warehouseId === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Warehouse is required',
+      });
+    }
+
     delete updateData.id;
     delete updateData.tenantId;
     delete updateData.createdAt;
@@ -907,6 +971,7 @@ router.put('/orders/:id', authorized('ADMIN', 'purchase-order.edit'), async (req
             locationState: supplierLocations.state,
             locationPostalCode: supplierLocations.postalCode,
             locationCountry: supplierLocations.country,
+            deliveryMethod: purchaseOrders.deliveryMethod,
             warehouseId: purchaseOrders.warehouseId,
             warehouseName: warehouses.name,
             warehouseAddress: warehouses.address,
