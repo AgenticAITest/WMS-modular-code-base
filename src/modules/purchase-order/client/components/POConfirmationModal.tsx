@@ -38,12 +38,14 @@ export const POConfirmationModal: React.FC<POConfirmationModalProps> = ({
 }) => {
   const [previewNumber, setPreviewNumber] = useState('');
   const [supplierInfo, setSupplierInfo] = useState<any>(null);
+  const [warehouseInfo, setWarehouseInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (open && poData) {
       fetchPreviewNumber();
       fetchSupplierInfo();
+      fetchWarehouseInfo();
     }
   }, [open, poData]);
 
@@ -61,7 +63,7 @@ export const POConfirmationModal: React.FC<POConfirmationModalProps> = ({
 
   const fetchSupplierInfo = async () => {
     if (!poData?.supplierId) return;
-    
+
     try {
       const response = await axios.get(`/api/modules/master-data/suppliers/${poData.supplierId}`);
       if (response.data.success) {
@@ -69,6 +71,19 @@ export const POConfirmationModal: React.FC<POConfirmationModalProps> = ({
       }
     } catch (error) {
       console.error('Error fetching supplier info:', error);
+    }
+  };
+
+  const fetchWarehouseInfo = async () => {
+    if (!poData?.warehouseId) return;
+
+    try {
+      const response = await axios.get(`/api/modules/warehouse-setup/warehouses/${poData.warehouseId}`);
+      if (response.data.success) {
+        setWarehouseInfo(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching warehouse info:', error);
     }
   };
 
@@ -115,7 +130,7 @@ export const POConfirmationModal: React.FC<POConfirmationModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+          <div className="grid grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
             <div>
               <div className="text-sm text-muted-foreground">PO Number</div>
               <div className="text-lg font-bold">{previewNumber || 'Generating...'}</div>
@@ -124,27 +139,61 @@ export const POConfirmationModal: React.FC<POConfirmationModalProps> = ({
               <div className="text-sm text-muted-foreground">Order Date</div>
               <div className="text-lg font-semibold">{new Date().toLocaleDateString()}</div>
             </div>
+            <div>
+              <div className="text-sm text-muted-foreground">Fulfillment Method</div>
+              <div className="text-lg font-semibold">
+                {poData?.deliveryMethod === 'pickup' ? 'Pickup' : 'Delivery'}
+              </div>
+            </div>
           </div>
 
-          <div>
-            <h3 className="text-sm font-semibold mb-2">Supplier Information</h3>
-            <div className="p-4 border rounded-lg space-y-2">
-              <div>
-                <span className="font-medium">Name:</span> {supplierInfo?.name || 'Loading...'}
-              </div>
-              <div>
-                <span className="font-medium">Address:</span> {getSupplierAddress()}
-              </div>
-              {supplierInfo?.email && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <h3 className="text-sm font-semibold mb-2">Supplier Information</h3>
+              <div className="p-4 border rounded-lg space-y-2">
                 <div>
-                  <span className="font-medium">Email:</span> {supplierInfo.email}
+                  <span className="font-medium">Name:</span> {supplierInfo?.name || 'Loading...'}
                 </div>
-              )}
-              {supplierInfo?.phone && (
+                {poData?.deliveryMethod === 'pickup' && poData?.supplierLocationId && (
+                  <div>
+                    <span className="font-medium">Pickup Location:</span> {getSupplierAddress()}
+                  </div>
+                )}
+                {supplierInfo?.email && (
+                  <div>
+                    <span className="font-medium">Email:</span> {supplierInfo.email}
+                  </div>
+                )}
+                {supplierInfo?.phone && (
+                  <div>
+                    <span className="font-medium">Phone:</span> {supplierInfo.phone}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold mb-2">
+                {poData?.deliveryMethod === 'pickup' ? 'Destination Warehouse' : 'Delivery Address'}
+              </h3>
+              <div className="p-4 border rounded-lg space-y-2">
                 <div>
-                  <span className="font-medium">Phone:</span> {supplierInfo.phone}
+                  <span className="font-medium">Name:</span> {warehouseInfo?.name || 'Loading...'}
                 </div>
-              )}
+                <div>
+                  <span className="font-medium">Address:</span> {warehouseInfo?.address || 'N/A'}
+                </div>
+                {warehouseInfo?.city && (
+                  <div>
+                    <span className="font-medium">City:</span> {warehouseInfo.city}
+                  </div>
+                )}
+                {warehouseInfo?.phone && (
+                  <div>
+                    <span className="font-medium">Phone:</span> {warehouseInfo.phone}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -190,7 +239,9 @@ export const POConfirmationModal: React.FC<POConfirmationModalProps> = ({
 
           {poData.expectedDeliveryDate && (
             <div>
-              <span className="text-sm font-medium">Expected Delivery:</span>{' '}
+              <span className="text-sm font-medium">
+                {poData?.deliveryMethod === 'pickup' ? 'Expected Pickup:' : 'Expected Delivery:'}
+              </span>{' '}
               {new Date(poData.expectedDeliveryDate).toLocaleDateString()}
             </div>
           )}
