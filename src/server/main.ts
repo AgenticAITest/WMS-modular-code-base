@@ -62,6 +62,9 @@ app.use(fileUpload())
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files from public directory (for generated documents, uploads, etc.)
+app.use(express.static(path.join(__dirname, '../../public')));
+
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0', // Specify OpenAPI version
