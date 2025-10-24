@@ -352,22 +352,72 @@ router.put('/warehouses/:id', authorized('ADMIN', 'warehouse-setup.edit'), async
   try {
     const tenantId = req.user!.activeTenantId;
     const { id } = req.params;
-    const { name, address, isActive } = req.body;
+    const {
+      name,
+      address,
+      isActive,
+      pickingStrategy,
+      autoAssignBins,
+      requireBatchTracking,
+      requireExpiryTracking
+    } = req.body;
 
-    const [updated] = await db
-      .update(warehouses)
-      .set({ name, address, isActive, updatedAt: new Date() })
+    // Use transaction to update both warehouse and config
+    await db.transaction(async (tx) => {
+      // Update warehouse basic info
+      const [updated] = await tx
+        .update(warehouses)
+        .set({ name, address, isActive, updatedAt: new Date() })
+        .where(and(eq(warehouses.id, id), eq(warehouses.tenantId, tenantId)))
+        .returning();
+
+      if (!updated) {
+        throw new Error('Warehouse not found');
+      }
+
+      // Update warehouse configuration if config fields are provided
+      if (pickingStrategy !== undefined || autoAssignBins !== undefined ||
+          requireBatchTracking !== undefined || requireExpiryTracking !== undefined) {
+
+        const configUpdate: any = { updatedAt: new Date() };
+        if (pickingStrategy !== undefined) configUpdate.pickingStrategy = pickingStrategy;
+        if (autoAssignBins !== undefined) configUpdate.autoAssignBins = autoAssignBins;
+        if (requireBatchTracking !== undefined) configUpdate.requireBatchTracking = requireBatchTracking;
+        if (requireExpiryTracking !== undefined) configUpdate.requireExpiryTracking = requireExpiryTracking;
+
+        await tx
+          .update(warehouseConfigs)
+          .set(configUpdate)
+          .where(and(
+            eq(warehouseConfigs.warehouseId, id),
+            eq(warehouseConfigs.tenantId, tenantId)
+          ));
+      }
+    });
+
+    // Fetch updated warehouse with config for response
+    const [updatedWarehouse] = await db
+      .select({
+        id: warehouses.id,
+        name: warehouses.name,
+        address: warehouses.address,
+        isActive: warehouses.isActive,
+        createdAt: warehouses.createdAt,
+        updatedAt: warehouses.updatedAt,
+        pickingStrategy: warehouseConfigs.pickingStrategy,
+        autoAssignBins: warehouseConfigs.autoAssignBins,
+        requireBatchTracking: warehouseConfigs.requireBatchTracking,
+        requireExpiryTracking: warehouseConfigs.requireExpiryTracking,
+      })
+      .from(warehouses)
+      .leftJoin(warehouseConfigs, eq(warehouseConfigs.warehouseId, warehouses.id))
       .where(and(eq(warehouses.id, id), eq(warehouses.tenantId, tenantId)))
-      .returning();
+      .limit(1);
 
-    if (!updated) {
-      return res.status(404).json({ success: false, message: 'Warehouse not found' });
-    }
-
-    res.json({ success: true, data: updated, message: 'Warehouse updated successfully' });
-  } catch (error) {
+    res.json({ success: true, data: updatedWarehouse, message: 'Warehouse updated successfully' });
+  } catch (error: any) {
     console.error('Error updating warehouse:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    res.status(500).json({ success: false, message: error.message || 'Internal server error' });
   }
 });
 
