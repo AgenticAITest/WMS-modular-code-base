@@ -23,7 +23,6 @@ interface PODocumentData {
   locationCountry: string | null;
   warehouseName: string | null;
   warehouseAddress: string | null;
-  warehouseCity: string | null;
   createdByName: string | null;
   items: Array<{
     productSku: string;
