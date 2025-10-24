@@ -698,12 +698,12 @@ router.post('/preview', authorized('ADMIN', 'purchase-order.create'), async (req
         return {
           productSku: product?.sku || 'N/A',
           productName: product?.name || 'N/A',
-          orderedQuantity: item.orderedQuantity,
-          unitCost: item.unitCost || '0.00',
+          orderedQuantity: item.orderedQuantity ?? 0,
+          unitCost: (item.unitCost || '0.00').toString(),
           totalCost: item.unitCost && item.orderedQuantity
             ? (parseFloat(item.unitCost) * parseInt(item.orderedQuantity)).toFixed(2)
             : '0.00',
-          notes: item.notes || null
+          notes: item.notes ? item.notes.toString() : null
         };
       })
     );
