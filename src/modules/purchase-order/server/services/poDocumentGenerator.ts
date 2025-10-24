@@ -23,6 +23,7 @@ interface PODocumentData {
   locationCountry: string | null;
   warehouseName: string | null;
   warehouseAddress: string | null;
+  warehouseCity: string | null;
   createdByName: string | null;
   items: Array<{
     productSku: string;
@@ -35,7 +36,7 @@ interface PODocumentData {
 }
 
 export class PODocumentGenerator {
-  private static generateHTML(poData: PODocumentData): string {
+  static generateHTML(poData: PODocumentData): string {
     const supplierAddress = [
       poData.locationAddress,
       poData.locationCity,

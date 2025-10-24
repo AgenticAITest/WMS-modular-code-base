@@ -123,6 +123,224 @@ router.use(checkModuleAuthorization('purchase-order'));
 
 /**
  * @swagger
+ * /api/modules/purchase-order/preview-html:
+ *   post:
+ *     summary: Generate HTML preview for purchase order (without saving)
+ *     tags: [Purchase Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - supplierId
+ *               - orderDate
+ *               - deliveryMethod
+ *               - warehouseId
+ *               - items
+ *             properties:
+ *               supplierId:
+ *                 type: string
+ *                 format: uuid
+ *               supplierLocationId:
+ *                 type: string
+ *                 format: uuid
+ *               orderDate:
+ *                 type: string
+ *                 format: date
+ *               expectedDeliveryDate:
+ *                 type: string
+ *                 format: date
+ *               deliveryMethod:
+ *                 type: string
+ *                 enum: [delivery, pickup]
+ *               warehouseId:
+ *                 type: string
+ *                 format: uuid
+ *               notes:
+ *                 type: string
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     productId:
+ *                       type: string
+ *                       format: uuid
+ *                     orderedQuantity:
+ *                       type: number
+ *                     unitCost:
+ *                       type: number
+ *                     notes:
+ *                       type: string
+ *     responses:
+ *       200:
+ *         description: HTML preview generated successfully
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *       400:
+ *         description: Invalid request data
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/preview-html', authorized('ADMIN', 'purchase-order.create'), async (req, res) => {
+  try {
+    const tenantId = req.user!.activeTenantId;
+    const userId = req.user!.id;
+    const {
+      supplierId,
+      supplierLocationId,
+      orderDate,
+      expectedDeliveryDate,
+      deliveryMethod,
+      warehouseId,
+      notes,
+      items
+    } = req.body;
+
+    // Fetch preview number
+    let previewNumber = 'PREVIEW-GENERATING';
+    try {
+      const previewResponse = await axios.post(
+        'http://localhost:5000/api/modules/document-numbering/preview',
+        { documentType: 'PO' },
+        { headers: { Authorization: req.headers.authorization } }
+      );
+      previewNumber = previewResponse.data.previewNumber || 'PREVIEW-0001';
+    } catch (error) {
+      console.error('Error fetching preview number:', error);
+    }
+
+    // Fetch supplier info
+    const [supplierData] = await db
+      .select({
+        name: suppliers.name,
+        email: suppliers.email,
+        phone: suppliers.phone
+      })
+      .from(suppliers)
+      .where(and(
+        eq(suppliers.id, supplierId),
+        eq(suppliers.tenantId, tenantId)
+      ))
+      .limit(1);
+
+    if (!supplierData) {
+      return res.status(404).json({ error: 'Supplier not found' });
+    }
+
+    // Fetch supplier location if provided
+    let locationData = null;
+    if (supplierLocationId) {
+      [locationData] = await db
+        .select()
+        .from(supplierLocations)
+        .where(and(
+          eq(supplierLocations.id, supplierLocationId),
+          eq(supplierLocations.supplierId, supplierId),
+          eq(supplierLocations.tenantId, tenantId)
+        ))
+        .limit(1);
+    }
+
+    // Fetch warehouse info
+    const [warehouseData] = await db
+      .select({
+        name: warehouses.name,
+        address: warehouses.address
+      })
+      .from(warehouses)
+      .where(and(
+        eq(warehouses.id, warehouseId),
+        eq(warehouses.tenantId, tenantId)
+      ))
+      .limit(1);
+
+    // Fetch user info
+    const [userData] = await db
+      .select({ name: user.fullname })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+
+    // Fetch product details for all items
+    const productIds = items.map((item: any) => item.productId);
+    const productDetails = await db
+      .select({
+        id: products.id,
+        sku: products.sku,
+        name: products.name
+      })
+      .from(products)
+      .where(and(
+        eq(products.tenantId, tenantId),
+        sql`${products.id} = ANY(${productIds})`
+      ));
+
+    const productMap = new Map(productDetails.map(p => [p.id, p]));
+
+    // Build item data with product details
+    const itemsWithDetails = items.map((item: any) => {
+      const product = productMap.get(item.productId);
+      const totalCost = item.orderedQuantity * item.unitCost;
+      return {
+        productSku: product?.sku || 'N/A',
+        productName: product?.name || 'Unknown Product',
+        orderedQuantity: item.orderedQuantity,
+        unitCost: item.unitCost.toString(),
+        totalCost: totalCost.toString(),
+        notes: item.notes || null
+      };
+    });
+
+    // Calculate total amount
+    const totalAmount = items.reduce((sum: number, item: any) => {
+      return sum + (item.orderedQuantity * item.unitCost);
+    }, 0);
+
+    // Build PO data for HTML generation
+    const poData = {
+      id: 'preview',
+      tenantId,
+      orderNumber: previewNumber,
+      orderDate,
+      expectedDeliveryDate: expectedDeliveryDate || null,
+      deliveryMethod: deliveryMethod || 'delivery',
+      totalAmount: totalAmount.toString(),
+      notes: notes || null,
+      supplierName: supplierData.name,
+      supplierEmail: supplierData.email,
+      supplierPhone: supplierData.phone,
+      locationAddress: locationData?.address || null,
+      locationCity: locationData?.city || null,
+      locationState: locationData?.state || null,
+      locationPostalCode: locationData?.postalCode || null,
+      locationCountry: locationData?.country || null,
+      warehouseName: warehouseData?.name || null,
+      warehouseAddress: warehouseData?.address || null,
+      warehouseCity: null, // Warehouse table doesn't have city field
+      createdByName: userData?.name || null,
+      items: itemsWithDetails
+    };
+
+    // Generate HTML using the same generator
+    const htmlContent = PODocumentGenerator.generateHTML(poData);
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(htmlContent);
+  } catch (error) {
+    console.error('Error generating HTML preview:', error);
+    res.status(500).json({ error: 'Failed to generate HTML preview' });
+  }
+});
+
+/**
+ * @swagger
  * /api/modules/purchase-order/products-with-stock:
  *   get:
  *     summary: Get inventory items with stock information for PO creation
@@ -818,6 +1036,7 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
           locationCountry: completeOrder.locationCountry,
           warehouseName: completeOrder.warehouseName || 'N/A',
           warehouseAddress: completeOrder.warehouseAddress || 'N/A',
+          warehouseCity: null, // Warehouse table doesn't have city field
           createdByName: completeOrder.createdByName,
           items: orderItems.map(item => ({
             productSku: item.productSku || 'N/A',
@@ -1038,6 +1257,7 @@ router.put('/orders/:id', authorized('ADMIN', 'purchase-order.edit'), async (req
             locationCountry: completeOrder.locationCountry,
             warehouseName: completeOrder.warehouseName || 'N/A',
             warehouseAddress: completeOrder.warehouseAddress || 'N/A',
+            warehouseCity: null, // Warehouse table doesn't have city field
             createdByName: completeOrder.createdByName,
             items: orderItems.map(item => ({
               productSku: item.productSku || 'N/A',
