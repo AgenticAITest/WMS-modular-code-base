@@ -92,6 +92,7 @@ export function EditBinDialog({
     if (!open) {
       cleanupTimerRef.current = setTimeout(() => {
         document.body.style.pointerEvents = '';
+        document.documentElement.style.pointerEvents = '';
         cleanupTimerRef.current = null;
       }, 100);
     }
@@ -101,6 +102,8 @@ export function EditBinDialog({
         clearTimeout(cleanupTimerRef.current);
         cleanupTimerRef.current = null;
       }
+      document.body.style.pointerEvents = '';
+      document.documentElement.style.pointerEvents = '';
     };
   }, [open]);
 
@@ -154,6 +157,7 @@ export function EditBinDialog({
 
   const cleanupPointerEvents = () => {
     document.body.style.pointerEvents = '';
+    document.documentElement.style.pointerEvents = '';
   };
 
   const onSubmit = async (data: BinFormData) => {
