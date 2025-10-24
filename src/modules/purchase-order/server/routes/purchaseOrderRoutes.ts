@@ -269,18 +269,22 @@ router.post('/preview-html', authorized('ADMIN', 'purchase-order.create'), async
       .limit(1);
 
     // Fetch product details for all items
-    const productIds = items.map((item: any) => item.productId);
-    const productDetails = await db
-      .select({
-        id: products.id,
-        sku: products.sku,
-        name: products.name
-      })
-      .from(products)
-      .where(and(
-        eq(products.tenantId, tenantId),
-        inArray(products.id, productIds)
-      ));
+    const productIds = items.map((item: any) => item.productId).filter(Boolean);
+    
+    let productDetails: any[] = [];
+    if (productIds.length > 0) {
+      productDetails = await db
+        .select({
+          id: products.id,
+          sku: products.sku,
+          name: products.name
+        })
+        .from(products)
+        .where(and(
+          eq(products.tenantId, tenantId),
+          inArray(products.id, productIds)
+        ));
+    }
 
     const productMap = new Map(productDetails.map(p => [p.id, p]));
 
