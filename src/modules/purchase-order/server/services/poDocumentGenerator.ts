@@ -10,6 +10,7 @@ interface PODocumentData {
   orderNumber: string;
   orderDate: string;
   expectedDeliveryDate: string | null;
+  deliveryMethod: string; // 'delivery' or 'pickup'
   totalAmount: string;
   notes: string | null;
   supplierName: string;
@@ -22,6 +23,7 @@ interface PODocumentData {
   locationCountry: string | null;
   warehouseName: string | null;
   warehouseAddress: string | null;
+  warehouseCity: string | null;
   createdByName: string | null;
   items: Array<{
     productSku: string;
@@ -64,6 +66,11 @@ export class PODocumentGenerator {
           day: 'numeric'
         })
       : 'N/A';
+
+    const isPickup = poData.deliveryMethod === 'pickup';
+    const fulfillmentMethodLabel = isPickup ? 'Pickup' : 'Delivery';
+    const dateLabel = isPickup ? 'Expected Pickup' : 'Expected Delivery';
+    const warehouseLabel = isPickup ? 'Destination Warehouse' : 'Delivery Address';
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -257,11 +264,14 @@ export class PODocumentGenerator {
     <div class="info-section">
       <h2>Supplier Information</h2>
       <div class="company-name">${poData.supplierName}</div>
+      ${isPickup && supplierAddress !== 'N/A' ? `
+      <div class="detail-line"><strong>Pickup Location:</strong></div>
       <div class="detail-line">${supplierAddress}</div>
+      ` : ''}
       ${poData.supplierEmail ? `<div class="detail-line">Email: ${poData.supplierEmail}</div>` : ''}
       ${poData.supplierPhone ? `<div class="detail-line">Phone: ${poData.supplierPhone}</div>` : ''}
     </div>
-    
+
     <div class="info-section">
       <h2>Order Information</h2>
       <div class="detail-line">
@@ -273,7 +283,11 @@ export class PODocumentGenerator {
         ${formattedOrderDate}
       </div>
       <div class="detail-line">
-        <span class="label">Expected Delivery:</span>
+        <span class="label">Fulfillment:</span>
+        <strong>${fulfillmentMethodLabel}</strong>
+      </div>
+      <div class="detail-line">
+        <span class="label">${dateLabel}:</span>
         ${formattedDeliveryDate}
       </div>
       ${poData.createdByName ? `
@@ -288,12 +302,13 @@ export class PODocumentGenerator {
       </div>
     </div>
   </div>
-  
+
   <div class="document-info" style="margin-bottom: 30px;">
     <div class="info-section">
-      <h2>Delivery Address</h2>
+      <h2>${warehouseLabel}</h2>
       <div class="company-name">${poData.warehouseName || 'N/A'}</div>
       <div class="detail-line">${poData.warehouseAddress || 'Address not specified'}</div>
+      ${poData.warehouseCity ? `<div class="detail-line">${poData.warehouseCity}</div>` : ''}
     </div>
   </div>
   
