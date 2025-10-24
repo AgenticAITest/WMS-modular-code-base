@@ -3,6 +3,8 @@ import { authenticated, authorized } from '@server/middleware/authMiddleware';
 import { and, desc, eq, ilike, or } from 'drizzle-orm';
 import express from 'express';
 import { generatedDocuments } from '../lib/db/schemas/documentNumbering';
+import { promises as fs } from 'fs';
+import path from 'path';
 
 const router = express.Router();
 router.use(authenticated());
@@ -595,6 +597,79 @@ router.delete('/documents/:id', async (req, res) => {
     res.json({ message: 'Document deleted successfully' });
   } catch (error) {
     console.error('Error deleting document:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/modules/document-numbering/documents/{id}/view:
+ *   get:
+ *     summary: View a generated document file (authenticated)
+ *     tags: [Generated Documents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Document ID
+ *     responses:
+ *       200:
+ *         description: Document HTML file
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *       404:
+ *         description: Document not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/documents/:id/view', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user?.activeTenantId;
+
+    // Fetch document metadata and verify access
+    const [document] = await db
+      .select()
+      .from(generatedDocuments)
+      .where(
+        and(
+          eq(generatedDocuments.id, id),
+          eq(generatedDocuments.tenantId, tenantId!)
+        )
+      )
+      .limit(1);
+
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    // Get HTML file path from metadata
+    const htmlPath = document.files?.html?.path;
+    if (!htmlPath) {
+      return res.status(404).json({ error: 'Document file path not found' });
+    }
+
+    // Construct absolute file path
+    const filePath = path.join(process.cwd(), htmlPath);
+
+    // Check if file exists and read it
+    try {
+      const htmlContent = await fs.readFile(filePath, 'utf-8');
+      res.setHeader('Content-Type', 'text/html');
+      res.send(htmlContent);
+    } catch (fileError) {
+      console.error('Error reading document file:', fileError);
+      return res.status(404).json({ error: 'Document file not found on disk' });
+    }
+  } catch (error) {
+    console.error('Error serving document:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

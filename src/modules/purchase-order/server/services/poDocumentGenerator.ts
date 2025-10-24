@@ -369,7 +369,8 @@ export class PODocumentGenerator {
       const year = new Date(poData.orderDate).getFullYear();
       const dirPath = path.join(
         process.cwd(),
-        'public',
+        'storage',
+        'purchase-order',
         'documents',
         'tenants',
         poData.tenantId,
@@ -385,7 +386,7 @@ export class PODocumentGenerator {
 
       await fs.writeFile(filePath, htmlContent, 'utf-8');
 
-      const relativePath = `documents/tenants/${poData.tenantId}/po/${year}/${fileName}`;
+      const relativePath = `storage/purchase-order/documents/tenants/${poData.tenantId}/po/${year}/${fileName}`;
       const fileStats = await fs.stat(filePath);
 
       const [document] = await db
