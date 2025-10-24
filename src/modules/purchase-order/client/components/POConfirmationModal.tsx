@@ -7,15 +7,6 @@ import {
   DialogFooter,
 } from '@client/components/ui/dialog';
 import { Button } from '@client/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableFooter,
-} from '@client/components/ui/table';
 import { Separator } from '@client/components/ui/separator';
 import { ArrowLeft } from 'lucide-react';
 import axios from 'axios';
@@ -36,80 +27,37 @@ export const POConfirmationModal: React.FC<POConfirmationModalProps> = ({
   onConfirm,
   onBack,
 }) => {
-  const [previewNumber, setPreviewNumber] = useState('');
-  const [supplierInfo, setSupplierInfo] = useState<any>(null);
-  const [warehouseInfo, setWarehouseInfo] = useState<any>(null);
+  const [previewHTML, setPreviewHTML] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fetchingPreview, setFetchingPreview] = useState(false);
 
   useEffect(() => {
     if (open && poData) {
-      fetchPreviewNumber();
-      fetchSupplierInfo();
-      fetchWarehouseInfo();
+      fetchPreview();
     }
   }, [open, poData]);
 
-  const fetchPreviewNumber = async () => {
+  const fetchPreview = async () => {
     try {
-      const response = await axios.post('/api/modules/document-numbering/preview', {
-        documentType: 'PO',
-      });
-      setPreviewNumber(response.data.previewNumber);
-    } catch (error) {
-      console.error('Error fetching preview number:', error);
-      toast.error('Failed to generate PO number preview');
-    }
-  };
+      setFetchingPreview(true);
+      const response = await axios.post('/api/modules/purchase-order/preview', poData);
 
-  const fetchSupplierInfo = async () => {
-    if (!poData?.supplierId) return;
-
-    try {
-      const response = await axios.get(`/api/modules/master-data/suppliers/${poData.supplierId}`);
       if (response.data.success) {
-        setSupplierInfo(response.data.data);
+        setPreviewHTML(response.data.html);
+      } else {
+        toast.error('Failed to generate PO preview');
       }
     } catch (error) {
-      console.error('Error fetching supplier info:', error);
+      console.error('Error generating PO preview:', error);
+      toast.error('Failed to generate PO preview');
+    } finally {
+      setFetchingPreview(false);
     }
-  };
-
-  const fetchWarehouseInfo = async () => {
-    if (!poData?.warehouseId) return;
-
-    try {
-      const response = await axios.get(`/api/modules/warehouse-setup/warehouses/${poData.warehouseId}`);
-      if (response.data.success) {
-        setWarehouseInfo(response.data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching warehouse info:', error);
-    }
-  };
-
-  const calculateTotal = () => {
-    if (!poData?.items) return 0;
-    return poData.items.reduce((sum: number, item: any) => {
-      return sum + (item.orderedQuantity * item.unitCost);
-    }, 0);
-  };
-
-  const getSupplierAddress = () => {
-    if (!supplierInfo) return 'N/A';
-    
-    if (poData.supplierLocationId && supplierInfo.locations) {
-      const location = supplierInfo.locations.find((loc: any) => loc.id === poData.supplierLocationId);
-      if (location) {
-        return `${location.address}, ${location.city}, ${location.state} ${location.postalCode}, ${location.country}`;
-      }
-    }
-    
-    return 'No location specified';
   };
 
   const handleConfirm = async () => {
     if (loading) return;
-    
+
     setLoading(true);
     try {
       await onConfirm(poData);
@@ -126,133 +74,35 @@ export const POConfirmationModal: React.FC<POConfirmationModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[90rem] sm:max-w-[90rem] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Confirm Purchase Order</DialogTitle>
+          <DialogTitle>Confirm Purchase Order - Preview</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          <div className="grid grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
-            <div>
-              <div className="text-sm text-muted-foreground">PO Number</div>
-              <div className="text-lg font-bold">{previewNumber || 'Generating...'}</div>
-            </div>
-            <div>
-              <div className="text-sm text-muted-foreground">Order Date</div>
-              <div className="text-lg font-semibold">{new Date().toLocaleDateString()}</div>
-            </div>
-            <div>
-              <div className="text-sm text-muted-foreground">Fulfillment Method</div>
-              <div className="text-lg font-semibold">
-                {poData?.deliveryMethod === 'pickup' ? 'Pickup' : 'Delivery'}
-              </div>
+        {fetchingPreview ? (
+          <div className="flex items-center justify-center h-[600px]">
+            <div className="text-center">
+              <div className="text-lg font-medium">Generating preview...</div>
+              <div className="text-sm text-muted-foreground mt-2">Please wait</div>
             </div>
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <h3 className="text-sm font-semibold mb-2">Supplier Information</h3>
-              <div className="p-4 border rounded-lg space-y-2">
-                <div>
-                  <span className="font-medium">Name:</span> {supplierInfo?.name || 'Loading...'}
-                </div>
-                {poData?.deliveryMethod === 'pickup' && poData?.supplierLocationId && (
-                  <div>
-                    <span className="font-medium">Pickup Location:</span> {getSupplierAddress()}
-                  </div>
-                )}
-                {supplierInfo?.email && (
-                  <div>
-                    <span className="font-medium">Email:</span> {supplierInfo.email}
-                  </div>
-                )}
-                {supplierInfo?.phone && (
-                  <div>
-                    <span className="font-medium">Phone:</span> {supplierInfo.phone}
-                  </div>
-                )}
-              </div>
+        ) : previewHTML ? (
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              This is how your Purchase Order will look when saved. Review carefully before confirming.
             </div>
-
-            <div>
-              <h3 className="text-sm font-semibold mb-2">
-                {poData?.deliveryMethod === 'pickup' ? 'Destination Warehouse' : 'Delivery Address'}
-              </h3>
-              <div className="p-4 border rounded-lg space-y-2">
-                <div>
-                  <span className="font-medium">Name:</span> {warehouseInfo?.name || 'Loading...'}
-                </div>
-                <div>
-                  <span className="font-medium">Address:</span> {warehouseInfo?.address || 'N/A'}
-                </div>
-                {warehouseInfo?.city && (
-                  <div>
-                    <span className="font-medium">City:</span> {warehouseInfo.city}
-                  </div>
-                )}
-                {warehouseInfo?.phone && (
-                  <div>
-                    <span className="font-medium">Phone:</span> {warehouseInfo.phone}
-                  </div>
-                )}
-              </div>
+            <iframe
+              srcDoc={previewHTML}
+              className="w-full h-[600px] border rounded-lg"
+              title="PO Preview"
+            />
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-[600px]">
+            <div className="text-center text-muted-foreground">
+              <div>Failed to load preview</div>
+              <div className="text-sm mt-2">Please try again</div>
             </div>
           </div>
-
-          <div>
-            <h3 className="text-sm font-semibold mb-2">Items</h3>
-            <div className="border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>Product Name</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead className="text-right">Unit Price</TableHead>
-                    <TableHead className="text-right">Subtotal</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {poData.items.map((item: any, index: number) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{item.sku}</TableCell>
-                      <TableCell>{item.name}</TableCell>
-                      <TableCell className="text-right">{item.orderedQuantity}</TableCell>
-                      <TableCell className="text-right">${parseFloat(item.unitCost).toFixed(2)}</TableCell>
-                      <TableCell className="text-right">
-                        ${(item.orderedQuantity * item.unitCost).toFixed(2)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-                <TableFooter>
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-right font-bold">
-                      Total Purchase Value
-                    </TableCell>
-                    <TableCell className="text-right font-bold text-lg">
-                      ${calculateTotal().toFixed(2)}
-                    </TableCell>
-                  </TableRow>
-                </TableFooter>
-              </Table>
-            </div>
-          </div>
-
-          {poData.expectedDeliveryDate && (
-            <div>
-              <span className="text-sm font-medium">
-                {poData?.deliveryMethod === 'pickup' ? 'Expected Pickup:' : 'Expected Delivery:'}
-              </span>{' '}
-              {new Date(poData.expectedDeliveryDate).toLocaleDateString()}
-            </div>
-          )}
-
-          {poData.notes && (
-            <div>
-              <div className="text-sm font-semibold mb-1">Notes</div>
-              <div className="p-3 bg-muted rounded-lg text-sm">{poData.notes}</div>
-            </div>
-          )}
-        </div>
+        )}
 
         <Separator />
 

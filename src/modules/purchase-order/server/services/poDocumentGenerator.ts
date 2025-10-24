@@ -359,6 +359,14 @@ export class PODocumentGenerator {
 </html>`;
   }
 
+  /**
+   * Generate HTML preview without saving to file system or database
+   * Used for showing preview in confirmation modal
+   */
+  static generatePreview(poData: PODocumentData): string {
+    return this.generateHTML(poData);
+  }
+
   static async generateAndSave(
     poData: PODocumentData,
     userId: string,
