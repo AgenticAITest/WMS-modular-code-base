@@ -203,6 +203,8 @@ router.post('/preview-html', authorized('ADMIN', 'purchase-order.create'), async
       items
     } = req.body;
 
+    console.log('[Preview HTML] Request:', { supplierId, warehouseId, itemsCount: items?.length });
+
     // Fetch preview number
     let previewNumber = 'PREVIEW-GENERATING';
     try {
@@ -217,6 +219,7 @@ router.post('/preview-html', authorized('ADMIN', 'purchase-order.create'), async
     }
 
     // Fetch supplier info
+    console.log('[Preview HTML] Fetching supplier...');
     const [supplierData] = await db
       .select({
         name: suppliers.name,
@@ -231,12 +234,15 @@ router.post('/preview-html', authorized('ADMIN', 'purchase-order.create'), async
       .limit(1);
 
     if (!supplierData) {
+      console.error('[Preview HTML] Supplier not found');
       return res.status(404).json({ error: 'Supplier not found' });
     }
+    console.log('[Preview HTML] Supplier fetched');
 
     // Fetch supplier location if provided
     let locationData = null;
     if (supplierLocationId) {
+      console.log('[Preview HTML] Fetching supplier location...');
       [locationData] = await db
         .select()
         .from(supplierLocations)
@@ -246,9 +252,11 @@ router.post('/preview-html', authorized('ADMIN', 'purchase-order.create'), async
           eq(supplierLocations.tenantId, tenantId)
         ))
         .limit(1);
+      console.log('[Preview HTML] Supplier location fetched');
     }
 
     // Fetch warehouse info
+    console.log('[Preview HTML] Fetching warehouse...');
     const [warehouseData] = await db
       .select({
         name: warehouses.name,
@@ -260,13 +268,16 @@ router.post('/preview-html', authorized('ADMIN', 'purchase-order.create'), async
         eq(warehouses.tenantId, tenantId)
       ))
       .limit(1);
+    console.log('[Preview HTML] Warehouse fetched');
 
     // Fetch user info
+    console.log('[Preview HTML] Fetching user...');
     const [userData] = await db
       .select({ name: user.fullname })
       .from(user)
       .where(eq(user.id, userId))
       .limit(1);
+    console.log('[Preview HTML] User fetched');
 
     // Fetch product details for all items
     const productIds = items.map((item: any) => item.productId).filter(Boolean);
