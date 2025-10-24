@@ -1,0 +1,7 @@
+# Ignore all files in storage (sensitive documents)
+*
+
+# But keep .gitignore and .gitkeep files
+!.gitignore
+!.gitkeep
+!*/
