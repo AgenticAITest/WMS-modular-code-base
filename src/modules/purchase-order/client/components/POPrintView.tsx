@@ -43,16 +43,19 @@ export const POPrintView: React.FC<POPrintViewProps> = ({
       if (docResponse.data.data && docResponse.data.data.length > 0) {
         // Get the latest version (first item, since API returns ordered by version desc)
         const document = docResponse.data.data[0];
-        const htmlPath = document.files?.html?.path;
+        const documentId = document.id;
 
-        if (htmlPath) {
-          // Fetch the actual HTML file
-          const htmlResponse = await axios.get(`/${htmlPath}`, {
-            responseType: 'text',
-          });
+        if (documentId) {
+          // Fetch the actual HTML file via authenticated endpoint
+          const htmlResponse = await axios.get(
+            `/api/modules/document-numbering/documents/${documentId}/view`,
+            {
+              responseType: 'text',
+            }
+          );
           setHtmlContent(htmlResponse.data);
         } else {
-          toast.error('Document HTML file path not found');
+          toast.error('Document ID not found');
         }
       } else {
         toast.error('No generated document found for this PO');
