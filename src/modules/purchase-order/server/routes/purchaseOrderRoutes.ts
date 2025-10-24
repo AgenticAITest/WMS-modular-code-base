@@ -204,6 +204,12 @@ router.post('/preview-html', authorized('ADMIN', 'purchase-order.create'), async
     } = req.body;
 
     console.log('[Preview HTML] Request:', { supplierId, warehouseId, itemsCount: items?.length });
+    console.log('[Preview HTML] Schema checks:', {
+      suppliers: typeof suppliers,
+      suppliersName: typeof suppliers?.name,
+      warehouses: typeof warehouses,
+      user: typeof user
+    });
 
     // Fetch preview number
     let previewNumber = 'PREVIEW-GENERATING';
@@ -220,18 +226,21 @@ router.post('/preview-html', authorized('ADMIN', 'purchase-order.create'), async
 
     // Fetch supplier info
     console.log('[Preview HTML] Fetching supplier...');
-    const [supplierData] = await db
-      .select({
-        name: suppliers.name,
-        email: suppliers.email,
-        phone: suppliers.phone
-      })
-      .from(suppliers)
-      .where(and(
-        eq(suppliers.id, supplierId),
-        eq(suppliers.tenantId, tenantId)
-      ))
-      .limit(1);
+    let supplierData;
+    try {
+      const results = await db
+        .select()
+        .from(suppliers)
+        .where(and(
+          eq(suppliers.id, supplierId),
+          eq(suppliers.tenantId, tenantId)
+        ))
+        .limit(1);
+      supplierData = results[0];
+    } catch (err) {
+      console.error('[Preview HTML] ERROR fetching supplier:', err);
+      throw err;
+    }
 
     if (!supplierData) {
       console.error('[Preview HTML] Supplier not found');
@@ -243,59 +252,79 @@ router.post('/preview-html', authorized('ADMIN', 'purchase-order.create'), async
     let locationData = null;
     if (supplierLocationId) {
       console.log('[Preview HTML] Fetching supplier location...');
-      [locationData] = await db
-        .select()
-        .from(supplierLocations)
-        .where(and(
-          eq(supplierLocations.id, supplierLocationId),
-          eq(supplierLocations.supplierId, supplierId),
-          eq(supplierLocations.tenantId, tenantId)
-        ))
-        .limit(1);
+      try {
+        const results = await db
+          .select()
+          .from(supplierLocations)
+          .where(and(
+            eq(supplierLocations.id, supplierLocationId),
+            eq(supplierLocations.supplierId, supplierId),
+            eq(supplierLocations.tenantId, tenantId)
+          ))
+          .limit(1);
+        locationData = results[0];
+      } catch (err) {
+        console.error('[Preview HTML] ERROR fetching supplier location:', err);
+        throw err;
+      }
       console.log('[Preview HTML] Supplier location fetched');
     }
 
     // Fetch warehouse info
     console.log('[Preview HTML] Fetching warehouse...');
-    const [warehouseData] = await db
-      .select({
-        name: warehouses.name,
-        address: warehouses.address
-      })
-      .from(warehouses)
-      .where(and(
-        eq(warehouses.id, warehouseId),
-        eq(warehouses.tenantId, tenantId)
-      ))
-      .limit(1);
+    let warehouseData;
+    try {
+      const results = await db
+        .select()
+        .from(warehouses)
+        .where(and(
+          eq(warehouses.id, warehouseId),
+          eq(warehouses.tenantId, tenantId)
+        ))
+        .limit(1);
+      warehouseData = results[0];
+    } catch (err) {
+      console.error('[Preview HTML] ERROR fetching warehouse:', err);
+      throw err;
+    }
     console.log('[Preview HTML] Warehouse fetched');
 
     // Fetch user info
     console.log('[Preview HTML] Fetching user...');
-    const [userData] = await db
-      .select({ name: user.fullname })
-      .from(user)
-      .where(eq(user.id, userId))
-      .limit(1);
+    let userData;
+    try {
+      const results = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, userId))
+        .limit(1);
+      userData = results[0];
+    } catch (err) {
+      console.error('[Preview HTML] ERROR fetching user:', err);
+      throw err;
+    }
     console.log('[Preview HTML] User fetched');
 
     // Fetch product details for all items
+    console.log('[Preview HTML] Fetching products...');
     const productIds = items.map((item: any) => item.productId).filter(Boolean);
     
     let productDetails: any[] = [];
     if (productIds.length > 0) {
-      productDetails = await db
-        .select({
-          id: products.id,
-          sku: products.sku,
-          name: products.name
-        })
-        .from(products)
-        .where(and(
-          eq(products.tenantId, tenantId),
-          inArray(products.id, productIds)
-        ));
+      try {
+        productDetails = await db
+          .select()
+          .from(products)
+          .where(and(
+            eq(products.tenantId, tenantId),
+            inArray(products.id, productIds)
+          ));
+      } catch (err) {
+        console.error('[Preview HTML] ERROR fetching products:', err);
+        throw err;
+      }
     }
+    console.log('[Preview HTML] Products fetched:', productDetails.length);
 
     const productMap = new Map(productDetails.map(p => [p.id, p]));
 
@@ -339,7 +368,7 @@ router.post('/preview-html', authorized('ADMIN', 'purchase-order.create'), async
       warehouseName: warehouseData?.name || null,
       warehouseAddress: warehouseData?.address || null,
       warehouseCity: null, // Warehouse table doesn't have city field
-      createdByName: userData?.name || null,
+      createdByName: userData?.fullname || null,
       items: itemsWithDetails
     };
 
