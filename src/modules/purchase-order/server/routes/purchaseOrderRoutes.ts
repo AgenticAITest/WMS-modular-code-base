@@ -613,19 +613,25 @@ router.post('/preview', authorized('ADMIN', 'purchase-order.create'), async (req
       return sum + itemTotal;
     }, 0);
 
-    // Get preview number
-    const docNumberResponse = await axios.post(
-      'http://localhost:5000/api/modules/document-numbering/preview',
-      {
-        documentType: 'PO'
-      },
-      {
-        headers: {
-          Authorization: req.headers.authorization,
+    // Get preview number with fallback
+    let orderNumber = 'PREVIEW-GENERATING';
+    try {
+      const docNumberResponse = await axios.post(
+        'http://localhost:5000/api/modules/document-numbering/preview',
+        {
+          documentType: 'PO'
         },
-      }
-    );
-    const orderNumber = docNumberResponse.data.previewNumber;
+        {
+          headers: {
+            Authorization: req.headers.authorization,
+          },
+        }
+      );
+      orderNumber = docNumberResponse.data.previewNumber;
+    } catch (error) {
+      console.error('Error fetching preview number:', error);
+      orderNumber = `PREVIEW-${Date.now()}`;
+    }
     const orderDate = new Date().toISOString().split('T')[0];
 
     // Fetch supplier info
@@ -696,14 +702,14 @@ router.post('/preview', authorized('ADMIN', 'purchase-order.create'), async (req
           .limit(1);
 
         return {
-          productSku: product?.sku || 'N/A',
-          productName: product?.name || 'N/A',
+          productSku: product?.sku ?? 'N/A',
+          productName: product?.name ?? 'N/A',
           orderedQuantity: item.orderedQuantity ?? 0,
-          unitCost: (item.unitCost || '0.00').toString(),
+          unitCost: item.unitCost?.toString() ?? '0.00',
           totalCost: item.unitCost && item.orderedQuantity
             ? (parseFloat(item.unitCost) * parseInt(item.orderedQuantity)).toFixed(2)
             : '0.00',
-          notes: item.notes ? item.notes.toString() : null
+          notes: item.notes?.toString() ?? null
         };
       })
     );
@@ -714,21 +720,22 @@ router.post('/preview', authorized('ADMIN', 'purchase-order.create'), async (req
       tenantId,
       orderNumber,
       orderDate,
-      expectedDeliveryDate,
+      expectedDeliveryDate: expectedDeliveryDate ?? null,
       deliveryMethod,
       totalAmount: totalAmount.toFixed(2),
-      notes,
+      notes: notes ?? null,
       supplierName: supplier?.name || 'N/A',
-      supplierEmail: supplier?.email || null,
-      supplierPhone: supplier?.phone || null,
-      locationAddress: supplierLocation?.address || null,
-      locationCity: supplierLocation?.city || null,
-      locationState: supplierLocation?.state || null,
-      locationPostalCode: supplierLocation?.postalCode || null,
-      locationCountry: supplierLocation?.country || null,
+      supplierEmail: supplier?.email ?? null,
+      supplierPhone: supplier?.phone ?? null,
+      locationAddress: supplierLocation?.address ?? null,
+      locationCity: supplierLocation?.city ?? null,
+      locationState: supplierLocation?.state ?? null,
+      locationPostalCode: supplierLocation?.postalCode ?? null,
+      locationCountry: supplierLocation?.country ?? null,
       warehouseName: warehouse?.name || 'N/A',
-      warehouseAddress: warehouse?.address || 'N/A',
-      createdByName: currentUser?.fullname || null,
+      warehouseAddress: warehouse?.address ?? null,
+      warehouseCity: null,
+      createdByName: currentUser?.fullname ?? null,
       items: itemsWithDetails
     });
 
