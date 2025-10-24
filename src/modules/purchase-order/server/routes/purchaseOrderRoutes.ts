@@ -7,7 +7,7 @@ import { warehouses } from '@modules/warehouse-setup/server/lib/db/schemas/wareh
 import { user } from '@server/lib/db/schema/system';
 import { documentNumberConfig } from '@modules/document-numbering/server/lib/db/schemas/documentNumbering';
 import { authenticated, authorized } from '@server/middleware/authMiddleware';
-import { eq, and, desc, count, ilike, or, sql, sum } from 'drizzle-orm';
+import { eq, and, desc, count, ilike, or, sql, sum, inArray } from 'drizzle-orm';
 import { checkModuleAuthorization } from '@server/middleware/moduleAuthMiddleware';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
@@ -120,6 +120,268 @@ router.use(checkModuleAuthorization('purchase-order'));
  */
 
 // ==================== HELPER ENDPOINTS ====================
+
+/**
+ * @swagger
+ * /api/modules/purchase-order/preview-html:
+ *   post:
+ *     summary: Generate HTML preview for purchase order (without saving)
+ *     tags: [Purchase Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - supplierId
+ *               - orderDate
+ *               - deliveryMethod
+ *               - warehouseId
+ *               - items
+ *             properties:
+ *               supplierId:
+ *                 type: string
+ *                 format: uuid
+ *               supplierLocationId:
+ *                 type: string
+ *                 format: uuid
+ *               orderDate:
+ *                 type: string
+ *                 format: date
+ *               expectedDeliveryDate:
+ *                 type: string
+ *                 format: date
+ *               deliveryMethod:
+ *                 type: string
+ *                 enum: [delivery, pickup]
+ *               warehouseId:
+ *                 type: string
+ *                 format: uuid
+ *               notes:
+ *                 type: string
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     productId:
+ *                       type: string
+ *                       format: uuid
+ *                     orderedQuantity:
+ *                       type: number
+ *                     unitCost:
+ *                       type: number
+ *                     notes:
+ *                       type: string
+ *     responses:
+ *       200:
+ *         description: HTML preview generated successfully
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *       400:
+ *         description: Invalid request data
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/preview-html', authorized('ADMIN', 'purchase-order.create'), async (req, res) => {
+  try {
+    const tenantId = req.user!.activeTenantId;
+    const userId = req.user!.id;
+    const {
+      supplierId,
+      supplierLocationId,
+      orderDate,
+      expectedDeliveryDate,
+      deliveryMethod,
+      warehouseId,
+      notes,
+      items
+    } = req.body;
+
+    console.log('[Preview HTML] Request:', { supplierId, warehouseId, itemsCount: items?.length });
+    console.log('[Preview HTML] Schema checks:', {
+      suppliers: typeof suppliers,
+      suppliersName: typeof suppliers?.name,
+      warehouses: typeof warehouses,
+      user: typeof user
+    });
+
+    // Fetch preview number
+    let previewNumber = 'PREVIEW-GENERATING';
+    try {
+      const previewResponse = await axios.post(
+        'http://localhost:5000/api/modules/document-numbering/preview',
+        { documentType: 'PO' },
+        { headers: { Authorization: req.headers.authorization } }
+      );
+      previewNumber = previewResponse.data.previewNumber || 'PREVIEW-0001';
+    } catch (error) {
+      console.error('Error fetching preview number:', error);
+    }
+
+    // Fetch supplier info
+    console.log('[Preview HTML] Fetching supplier...');
+    let supplierData;
+    try {
+      const results = await db
+        .select()
+        .from(suppliers)
+        .where(and(
+          eq(suppliers.id, supplierId),
+          eq(suppliers.tenantId, tenantId)
+        ))
+        .limit(1);
+      supplierData = results[0];
+    } catch (err) {
+      console.error('[Preview HTML] ERROR fetching supplier:', err);
+      throw err;
+    }
+
+    if (!supplierData) {
+      console.error('[Preview HTML] Supplier not found');
+      return res.status(404).json({ error: 'Supplier not found' });
+    }
+    console.log('[Preview HTML] Supplier fetched');
+
+    // Fetch supplier location if provided
+    let locationData = null;
+    if (supplierLocationId) {
+      console.log('[Preview HTML] Fetching supplier location...');
+      try {
+        const results = await db
+          .select()
+          .from(supplierLocations)
+          .where(and(
+            eq(supplierLocations.id, supplierLocationId),
+            eq(supplierLocations.supplierId, supplierId),
+            eq(supplierLocations.tenantId, tenantId)
+          ))
+          .limit(1);
+        locationData = results[0];
+      } catch (err) {
+        console.error('[Preview HTML] ERROR fetching supplier location:', err);
+        throw err;
+      }
+      console.log('[Preview HTML] Supplier location fetched');
+    }
+
+    // Fetch warehouse info
+    console.log('[Preview HTML] Fetching warehouse...');
+    let warehouseData;
+    try {
+      const results = await db
+        .select()
+        .from(warehouses)
+        .where(and(
+          eq(warehouses.id, warehouseId),
+          eq(warehouses.tenantId, tenantId)
+        ))
+        .limit(1);
+      warehouseData = results[0];
+    } catch (err) {
+      console.error('[Preview HTML] ERROR fetching warehouse:', err);
+      throw err;
+    }
+    console.log('[Preview HTML] Warehouse fetched');
+
+    // Fetch user info
+    console.log('[Preview HTML] Fetching user...');
+    let userData;
+    try {
+      const results = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, userId))
+        .limit(1);
+      userData = results[0];
+    } catch (err) {
+      console.error('[Preview HTML] ERROR fetching user:', err);
+      throw err;
+    }
+    console.log('[Preview HTML] User fetched');
+
+    // Fetch product details for all items
+    console.log('[Preview HTML] Fetching products...');
+    const productIds = items.map((item: any) => item.productId).filter(Boolean);
+    
+    let productDetails: any[] = [];
+    if (productIds.length > 0) {
+      try {
+        productDetails = await db
+          .select()
+          .from(products)
+          .where(and(
+            eq(products.tenantId, tenantId),
+            inArray(products.id, productIds)
+          ));
+      } catch (err) {
+        console.error('[Preview HTML] ERROR fetching products:', err);
+        throw err;
+      }
+    }
+    console.log('[Preview HTML] Products fetched:', productDetails.length);
+
+    const productMap = new Map(productDetails.map(p => [p.id, p]));
+
+    // Build item data with product details
+    const itemsWithDetails = items.map((item: any) => {
+      const product = productMap.get(item.productId);
+      const totalCost = item.orderedQuantity * item.unitCost;
+      return {
+        productSku: product?.sku || 'N/A',
+        productName: product?.name || 'Unknown Product',
+        orderedQuantity: item.orderedQuantity,
+        unitCost: item.unitCost.toString(),
+        totalCost: totalCost.toString(),
+        notes: item.notes || null
+      };
+    });
+
+    // Calculate total amount
+    const totalAmount = items.reduce((sum: number, item: any) => {
+      return sum + (item.orderedQuantity * item.unitCost);
+    }, 0);
+
+    // Build PO data for HTML generation
+    const poData = {
+      id: 'preview',
+      tenantId,
+      orderNumber: previewNumber,
+      orderDate,
+      expectedDeliveryDate: expectedDeliveryDate || null,
+      deliveryMethod: deliveryMethod || 'delivery',
+      totalAmount: totalAmount.toString(),
+      notes: notes || null,
+      supplierName: supplierData.name,
+      supplierEmail: supplierData.email,
+      supplierPhone: supplierData.phone,
+      locationAddress: locationData?.address || null,
+      locationCity: locationData?.city || null,
+      locationState: locationData?.state || null,
+      locationPostalCode: locationData?.postalCode || null,
+      locationCountry: locationData?.country || null,
+      warehouseName: warehouseData?.name || null,
+      warehouseAddress: warehouseData?.address || null,
+      warehouseCity: null, // Warehouse table doesn't have city field
+      createdByName: userData?.fullname || null,
+      items: itemsWithDetails
+    };
+
+    // Generate HTML using the same generator
+    const htmlContent = PODocumentGenerator.generateHTML(poData);
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(htmlContent);
+  } catch (error) {
+    console.error('Error generating HTML preview:', error);
+    res.status(500).json({ error: 'Failed to generate HTML preview' });
+  }
+});
 
 /**
  * @swagger
@@ -1009,6 +1271,7 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
           locationCountry: completeOrder.locationCountry,
           warehouseName: completeOrder.warehouseName || 'N/A',
           warehouseAddress: completeOrder.warehouseAddress || 'N/A',
+          warehouseCity: null, // Warehouse table doesn't have city field
           createdByName: completeOrder.createdByName,
           items: orderItems.map(item => ({
             productSku: item.productSku || 'N/A',
@@ -1229,6 +1492,7 @@ router.put('/orders/:id', authorized('ADMIN', 'purchase-order.edit'), async (req
             locationCountry: completeOrder.locationCountry,
             warehouseName: completeOrder.warehouseName || 'N/A',
             warehouseAddress: completeOrder.warehouseAddress || 'N/A',
+            warehouseCity: null, // Warehouse table doesn't have city field
             createdByName: completeOrder.createdByName,
             items: orderItems.map(item => ({
               productSku: item.productSku || 'N/A',

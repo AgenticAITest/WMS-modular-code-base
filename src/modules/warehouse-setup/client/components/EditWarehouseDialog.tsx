@@ -69,15 +69,17 @@ export function EditWarehouseDialog({ open, onOpenChange, warehouse, onSuccess }
 
   useEffect(() => {
     if (warehouse && open) {
-      setValue('name', warehouse.name);
-      setValue('address', warehouse.address || '');
-      setValue('isActive', warehouse.isActive);
-      setValue('pickingStrategy', warehouse.pickingStrategy as any);
-      setValue('autoAssignBins', warehouse.autoAssignBins);
-      setValue('requireBatchTracking', warehouse.requireBatchTracking);
-      setValue('requireExpiryTracking', warehouse.requireExpiryTracking);
+      reset({
+        name: warehouse.name,
+        address: warehouse.address || '',
+        isActive: Boolean(warehouse.isActive),
+        pickingStrategy: warehouse.pickingStrategy as any,
+        autoAssignBins: Boolean(warehouse.autoAssignBins),
+        requireBatchTracking: Boolean(warehouse.requireBatchTracking),
+        requireExpiryTracking: Boolean(warehouse.requireExpiryTracking),
+      });
     }
-  }, [warehouse, open, setValue]);
+  }, [warehouse, open, reset]);
 
   useEffect(() => {
     if (cleanupTimerRef.current) {
@@ -88,6 +90,7 @@ export function EditWarehouseDialog({ open, onOpenChange, warehouse, onSuccess }
     if (!open) {
       cleanupTimerRef.current = setTimeout(() => {
         document.body.style.pointerEvents = '';
+        document.documentElement.style.pointerEvents = '';
         cleanupTimerRef.current = null;
       }, 100);
     }
@@ -97,6 +100,8 @@ export function EditWarehouseDialog({ open, onOpenChange, warehouse, onSuccess }
         clearTimeout(cleanupTimerRef.current);
         cleanupTimerRef.current = null;
       }
+      document.body.style.pointerEvents = '';
+      document.documentElement.style.pointerEvents = '';
     };
   }, [open]);
 
@@ -107,6 +112,7 @@ export function EditWarehouseDialog({ open, onOpenChange, warehouse, onSuccess }
 
   const cleanupPointerEvents = () => {
     document.body.style.pointerEvents = '';
+    document.documentElement.style.pointerEvents = '';
   };
 
   const onSubmit = async (data: WarehouseFormData) => {
@@ -128,6 +134,11 @@ export function EditWarehouseDialog({ open, onOpenChange, warehouse, onSuccess }
     }
   };
 
+  const onInvalid = (errors: any) => {
+    console.error('Form validation errors:', errors);
+    toast.error('Please check the form for errors');
+  };
+
   const handleOpenChange = (newOpen: boolean) => {
     if (!isSubmitting) {
       onOpenChange(newOpen);
@@ -144,7 +155,7 @@ export function EditWarehouseDialog({ open, onOpenChange, warehouse, onSuccess }
         <DialogHeader>
           <DialogTitle>Edit Warehouse</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">
               Name <span className="text-destructive">*</span>

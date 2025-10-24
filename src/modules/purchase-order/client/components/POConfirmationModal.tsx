@@ -64,7 +64,7 @@ export const POConfirmationModal: React.FC<POConfirmationModalProps> = ({
     } catch (error) {
       console.error('Error confirming PO:', error);
     } finally {
-      setLoading(false);
+      setConfirmLoading(false);
     }
   };
 
@@ -72,7 +72,7 @@ export const POConfirmationModal: React.FC<POConfirmationModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[90rem] sm:max-w-[90rem] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[90rem] sm:max-w-[90rem] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Confirm Purchase Order - Preview</DialogTitle>
         </DialogHeader>
@@ -115,8 +115,8 @@ export const POConfirmationModal: React.FC<POConfirmationModalProps> = ({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleConfirm} disabled={loading}>
-              {loading ? 'Creating...' : 'Confirm & Create PO'}
+            <Button onClick={handleConfirm} disabled={confirmLoading || loading}>
+              {confirmLoading ? 'Creating...' : 'Confirm & Create PO'}
             </Button>
           </div>
         </DialogFooter>
