@@ -64,7 +64,7 @@ export const POConfirmationModal: React.FC<POConfirmationModalProps> = ({
     } catch (error) {
       console.error('Error confirming PO:', error);
     } finally {
-      setConfirmLoading(false);
+      setLoading(false);
     }
   };
 
@@ -115,8 +115,8 @@ export const POConfirmationModal: React.FC<POConfirmationModalProps> = ({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleConfirm} disabled={confirmLoading || loading}>
-              {confirmLoading ? 'Creating...' : 'Confirm & Create PO'}
+            <Button onClick={handleConfirm} disabled={loading || fetchingPreview}>
+              {loading ? 'Creating...' : 'Confirm & Create PO'}
             </Button>
           </div>
         </DialogFooter>
