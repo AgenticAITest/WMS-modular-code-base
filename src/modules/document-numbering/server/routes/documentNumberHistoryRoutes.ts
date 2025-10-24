@@ -161,6 +161,85 @@ router.get('/history/:id', async (req, res) => {
 
 /**
  * @swagger
+ * /api/modules/document-numbering/history/{id}:
+ *   put:
+ *     summary: Update document history record (link to actual document)
+ *     tags: [Document Numbering]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               documentId:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       200:
+ *         description: Document history updated successfully
+ *       404:
+ *         description: History record not found
+ */
+router.put('/history/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { documentId } = req.body;
+    const tenantId = req.user?.activeTenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: 'Tenant ID is required' });
+    }
+
+    if (!documentId) {
+      return res.status(400).json({ error: 'Document ID is required' });
+    }
+
+    const [record] = await db
+      .select()
+      .from(documentNumberHistory)
+      .where(
+        and(
+          eq(documentNumberHistory.id, id),
+          eq(documentNumberHistory.tenantId, tenantId)
+        )
+      )
+      .limit(1);
+
+    if (!record) {
+      return res.status(404).json({ error: 'History record not found' });
+    }
+
+    const [updated] = await db
+      .update(documentNumberHistory)
+      .set({
+        documentId,
+        updatedAt: new Date(),
+      })
+      .where(eq(documentNumberHistory.id, id))
+      .returning();
+
+    res.json({ 
+      message: 'Document history updated successfully',
+      data: updated 
+    });
+  } catch (error) {
+    console.error('Error updating document history:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * @swagger
  * /api/modules/document-numbering/history/{id}/void:
  *   post:
  *     summary: Mark a document number as voided
