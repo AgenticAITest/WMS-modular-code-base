@@ -532,6 +532,197 @@ router.get('/products-with-stock', authorized('ADMIN', 'purchase-order.create'),
   }
 });
 
+/**
+ * @swagger
+ * /api/modules/purchase-order/preview:
+ *   post:
+ *     summary: Generate PO HTML preview without saving
+ *     description: Generates HTML preview of purchase order for confirmation modal
+ *     tags: [Purchase Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - supplierId
+ *               - warehouseId
+ *               - items
+ *             properties:
+ *               supplierId:
+ *                 type: string
+ *               supplierLocationId:
+ *                 type: string
+ *               deliveryMethod:
+ *                 type: string
+ *                 enum: [delivery, pickup]
+ *               warehouseId:
+ *                 type: string
+ *               expectedDeliveryDate:
+ *                 type: string
+ *                 format: date
+ *               notes:
+ *                 type: string
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *     responses:
+ *       200:
+ *         description: HTML preview generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 html:
+ *                   type: string
+ */
+router.post('/preview', authorized('ADMIN', 'purchase-order.create'), async (req, res) => {
+  try {
+    const tenantId = req.user!.activeTenantId;
+    const username = req.user!.username;
+    const {
+      supplierId,
+      supplierLocationId,
+      deliveryMethod = 'delivery',
+      warehouseId,
+      expectedDeliveryDate,
+      notes,
+      items = []
+    } = req.body;
+
+    // Validation
+    if (!supplierId || !warehouseId || !items.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields for preview'
+      });
+    }
+
+    // Calculate total
+    const totalAmount = items.reduce((sum: number, item: any) => {
+      const itemTotal = item.unitCost && item.orderedQuantity
+        ? parseFloat(item.unitCost) * parseInt(item.orderedQuantity)
+        : 0;
+      return sum + itemTotal;
+    }, 0);
+
+    // Get preview number
+    const docNumberResponse = await axios.post(
+      'http://localhost:5000/api/modules/document-numbering/preview',
+      {
+        documentType: 'PO'
+      },
+      {
+        headers: {
+          Authorization: req.headers.authorization,
+        },
+      }
+    );
+    const orderNumber = docNumberResponse.data.previewNumber;
+    const orderDate = new Date().toISOString().split('T')[0];
+
+    // Fetch supplier info
+    const [supplier] = await db
+      .select()
+      .from(suppliers)
+      .where(and(eq(suppliers.id, supplierId), eq(suppliers.tenantId, tenantId)))
+      .limit(1);
+
+    // Fetch supplier location if provided
+    let supplierLocation = null;
+    if (supplierLocationId) {
+      const [location] = await db
+        .select()
+        .from(supplierLocations)
+        .where(and(
+          eq(supplierLocations.id, supplierLocationId),
+          eq(supplierLocations.supplierId, supplierId)
+        ))
+        .limit(1);
+      supplierLocation = location;
+    }
+
+    // Fetch warehouse info
+    const [warehouse] = await db
+      .select()
+      .from(warehouses)
+      .where(and(eq(warehouses.id, warehouseId), eq(warehouses.tenantId, tenantId)))
+      .limit(1);
+
+    // Fetch user info
+    const [currentUser] = await db
+      .select()
+      .from(user)
+      .where(eq(user.username, username))
+      .limit(1);
+
+    // Fetch product details for items
+    const itemsWithDetails = await Promise.all(
+      items.map(async (item: any) => {
+        const [product] = await db
+          .select()
+          .from(products)
+          .where(eq(products.id, item.productId))
+          .limit(1);
+
+        return {
+          productSku: product?.sku || 'N/A',
+          productName: product?.name || 'N/A',
+          orderedQuantity: item.orderedQuantity,
+          unitCost: item.unitCost || '0.00',
+          totalCost: item.unitCost && item.orderedQuantity
+            ? (parseFloat(item.unitCost) * parseInt(item.orderedQuantity)).toFixed(2)
+            : '0.00',
+          notes: item.notes
+        };
+      })
+    );
+
+    // Generate preview HTML
+    const previewHTML = PODocumentGenerator.generatePreview({
+      id: 'preview-' + Date.now(), // Temporary ID for preview
+      tenantId,
+      orderNumber,
+      orderDate,
+      expectedDeliveryDate,
+      deliveryMethod,
+      totalAmount: totalAmount.toFixed(2),
+      notes,
+      supplierName: supplier?.name || 'N/A',
+      supplierEmail: supplier?.email,
+      supplierPhone: supplier?.phone,
+      locationAddress: supplierLocation?.address,
+      locationCity: supplierLocation?.city,
+      locationState: supplierLocation?.state,
+      locationPostalCode: supplierLocation?.postalCode,
+      locationCountry: supplierLocation?.country,
+      warehouseName: warehouse?.name || 'N/A',
+      warehouseAddress: warehouse?.address || 'N/A',
+      createdByName: currentUser?.fullname,
+      items: itemsWithDetails
+    });
+
+    res.json({
+      success: true,
+      html: previewHTML
+    });
+  } catch (error: any) {
+    console.error('Error generating PO preview:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate PO preview',
+      error: error.message
+    });
+  }
+});
+
 // ==================== PURCHASE ORDERS CRUD ====================
 
 /**

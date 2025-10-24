@@ -27,44 +27,38 @@ export const POConfirmationModal: React.FC<POConfirmationModalProps> = ({
   onConfirm,
   onBack,
 }) => {
-  const [htmlContent, setHtmlContent] = useState<string>('');
+  const [previewHTML, setPreviewHTML] = useState('');
   const [loading, setLoading] = useState(false);
-  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [fetchingPreview, setFetchingPreview] = useState(false);
 
   useEffect(() => {
     if (open && poData) {
-      fetchHTMLPreview();
+      fetchPreview();
     }
   }, [open, poData]);
 
-  const fetchHTMLPreview = async () => {
+  const fetchPreview = async () => {
     try {
-      setLoading(true);
-      const response = await axios.post('/api/modules/purchase-order/preview-html', {
-        supplierId: poData.supplierId,
-        supplierLocationId: poData.supplierLocationId,
-        orderDate: poData.orderDate,
-        expectedDeliveryDate: poData.expectedDeliveryDate,
-        deliveryMethod: poData.deliveryMethod,
-        warehouseId: poData.warehouseId,
-        notes: poData.notes,
-        items: poData.items
-      }, {
-        responseType: 'text'
-      });
-      setHtmlContent(response.data);
+      setFetchingPreview(true);
+      const response = await axios.post('/api/modules/purchase-order/preview', poData);
+
+      if (response.data.success) {
+        setPreviewHTML(response.data.html);
+      } else {
+        toast.error('Failed to generate PO preview');
+      }
     } catch (error) {
-      console.error('Error fetching HTML preview:', error);
+      console.error('Error generating PO preview:', error);
       toast.error('Failed to generate PO preview');
     } finally {
-      setLoading(false);
+      setFetchingPreview(false);
     }
   };
 
   const handleConfirm = async () => {
-    if (confirmLoading) return;
-    
-    setConfirmLoading(true);
+    if (loading) return;
+
+    setLoading(true);
     try {
       await onConfirm(poData);
     } catch (error) {
@@ -80,28 +74,32 @@ export const POConfirmationModal: React.FC<POConfirmationModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[90rem] sm:max-w-[90rem] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Confirm Purchase Order</DialogTitle>
+          <DialogTitle>Confirm Purchase Order - Preview</DialogTitle>
         </DialogHeader>
 
-        {loading ? (
+        {fetchingPreview ? (
           <div className="flex items-center justify-center h-[600px]">
             <div className="text-center">
-              <div className="text-lg">Generating preview...</div>
+              <div className="text-lg font-medium">Generating preview...</div>
+              <div className="text-sm text-muted-foreground mt-2">Please wait</div>
             </div>
           </div>
-        ) : htmlContent ? (
-          <div className="flex-1 overflow-hidden">
+        ) : previewHTML ? (
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              This is how your Purchase Order will look when saved. Review carefully before confirming.
+            </div>
             <iframe
-              id="po-preview-iframe"
-              srcDoc={htmlContent}
-              className="w-full h-[600px] border-0"
-              title="Purchase Order Preview"
+              srcDoc={previewHTML}
+              className="w-full h-[600px] border rounded-lg"
+              title="PO Preview"
             />
           </div>
         ) : (
           <div className="flex items-center justify-center h-[600px]">
             <div className="text-center text-muted-foreground">
-              No preview available
+              <div>Failed to load preview</div>
+              <div className="text-sm mt-2">Please try again</div>
             </div>
           </div>
         )}
