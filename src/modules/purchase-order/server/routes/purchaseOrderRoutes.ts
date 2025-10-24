@@ -7,7 +7,7 @@ import { warehouses } from '@modules/warehouse-setup/server/lib/db/schemas/wareh
 import { user } from '@server/lib/db/schema/system';
 import { documentNumberConfig } from '@modules/document-numbering/server/lib/db/schemas/documentNumbering';
 import { authenticated, authorized } from '@server/middleware/authMiddleware';
-import { eq, and, desc, count, ilike, or, sql, sum } from 'drizzle-orm';
+import { eq, and, desc, count, ilike, or, sql, sum, inArray } from 'drizzle-orm';
 import { checkModuleAuthorization } from '@server/middleware/moduleAuthMiddleware';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
@@ -279,7 +279,7 @@ router.post('/preview-html', authorized('ADMIN', 'purchase-order.create'), async
       .from(products)
       .where(and(
         eq(products.tenantId, tenantId),
-        sql`${products.id} = ANY(${productIds})`
+        inArray(products.id, productIds)
       ));
 
     const productMap = new Map(productDetails.map(p => [p.id, p]));
