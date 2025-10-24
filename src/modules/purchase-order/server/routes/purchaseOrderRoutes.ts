@@ -630,7 +630,12 @@ router.post('/preview', authorized('ADMIN', 'purchase-order.create'), async (req
 
     // Fetch supplier info
     const [supplier] = await db
-      .select()
+      .select({
+        id: suppliers.id,
+        name: suppliers.name,
+        email: suppliers.email,
+        phone: suppliers.phone
+      })
       .from(suppliers)
       .where(and(eq(suppliers.id, supplierId), eq(suppliers.tenantId, tenantId)))
       .limit(1);
@@ -639,7 +644,14 @@ router.post('/preview', authorized('ADMIN', 'purchase-order.create'), async (req
     let supplierLocation = null;
     if (supplierLocationId) {
       const [location] = await db
-        .select()
+        .select({
+          id: supplierLocations.id,
+          address: supplierLocations.address,
+          city: supplierLocations.city,
+          state: supplierLocations.state,
+          postalCode: supplierLocations.postalCode,
+          country: supplierLocations.country
+        })
         .from(supplierLocations)
         .where(and(
           eq(supplierLocations.id, supplierLocationId),
@@ -651,14 +663,21 @@ router.post('/preview', authorized('ADMIN', 'purchase-order.create'), async (req
 
     // Fetch warehouse info
     const [warehouse] = await db
-      .select()
+      .select({
+        id: warehouses.id,
+        name: warehouses.name,
+        address: warehouses.address
+      })
       .from(warehouses)
       .where(and(eq(warehouses.id, warehouseId), eq(warehouses.tenantId, tenantId)))
       .limit(1);
 
     // Fetch user info
     const [currentUser] = await db
-      .select()
+      .select({
+        id: user.id,
+        fullname: user.fullname
+      })
       .from(user)
       .where(eq(user.username, username))
       .limit(1);
@@ -667,7 +686,11 @@ router.post('/preview', authorized('ADMIN', 'purchase-order.create'), async (req
     const itemsWithDetails = await Promise.all(
       items.map(async (item: any) => {
         const [product] = await db
-          .select()
+          .select({
+            id: products.id,
+            sku: products.sku,
+            name: products.name
+          })
           .from(products)
           .where(eq(products.id, item.productId))
           .limit(1);
