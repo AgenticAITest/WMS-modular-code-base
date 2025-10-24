@@ -703,7 +703,7 @@ router.post('/preview', authorized('ADMIN', 'purchase-order.create'), async (req
           totalCost: item.unitCost && item.orderedQuantity
             ? (parseFloat(item.unitCost) * parseInt(item.orderedQuantity)).toFixed(2)
             : '0.00',
-          notes: item.notes
+          notes: item.notes || null
         };
       })
     );
@@ -719,16 +719,16 @@ router.post('/preview', authorized('ADMIN', 'purchase-order.create'), async (req
       totalAmount: totalAmount.toFixed(2),
       notes,
       supplierName: supplier?.name || 'N/A',
-      supplierEmail: supplier?.email,
-      supplierPhone: supplier?.phone,
-      locationAddress: supplierLocation?.address,
-      locationCity: supplierLocation?.city,
-      locationState: supplierLocation?.state,
-      locationPostalCode: supplierLocation?.postalCode,
-      locationCountry: supplierLocation?.country,
+      supplierEmail: supplier?.email || null,
+      supplierPhone: supplier?.phone || null,
+      locationAddress: supplierLocation?.address || null,
+      locationCity: supplierLocation?.city || null,
+      locationState: supplierLocation?.state || null,
+      locationPostalCode: supplierLocation?.postalCode || null,
+      locationCountry: supplierLocation?.country || null,
       warehouseName: warehouse?.name || 'N/A',
       warehouseAddress: warehouse?.address || 'N/A',
-      createdByName: currentUser?.fullname,
+      createdByName: currentUser?.fullname || null,
       items: itemsWithDetails
     });
 
