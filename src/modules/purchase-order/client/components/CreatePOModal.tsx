@@ -32,12 +32,16 @@ interface CreatePOModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onProceedToConfirm: (poData: any) => void;
+  initialData?: any;
+  editMode?: boolean;
 }
 
 export const CreatePOModal: React.FC<CreatePOModalProps> = ({
   open,
   onOpenChange,
   onProceedToConfirm,
+  initialData,
+  editMode = false,
 }) => {
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<string>('');
@@ -71,6 +75,42 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
   useEffect(() => {
     fetchProducts();
   }, [currentPage, searchTerm]);
+
+  // Prepopulate form when editing
+  useEffect(() => {
+    if (open && initialData && editMode) {
+      setSelectedSupplier(initialData.supplierId || '');
+      setDeliveryMethod(initialData.deliveryMethod || 'delivery');
+      setSelectedSupplierLocation(initialData.supplierLocationId || '');
+      setSelectedWarehouse(initialData.warehouseId || '');
+      setExpectedDeliveryDate(initialData.expectedDeliveryDate || '');
+      setNotes(initialData.notes || '');
+
+      // Prepopulate selected items
+      if (initialData.items && initialData.items.length > 0) {
+        const itemsMap = new Map();
+        initialData.items.forEach((item: any) => {
+          itemsMap.set(item.productId, {
+            productId: item.productId,
+            sku: item.sku || '',
+            name: item.name || '',
+            orderedQuantity: item.orderedQuantity,
+            unitCost: item.unitCost,
+          });
+        });
+        setSelectedItems(itemsMap);
+      }
+    } else if (open && !editMode) {
+      // Reset form for new PO
+      setSelectedSupplier('');
+      setDeliveryMethod('delivery');
+      setSelectedSupplierLocation('');
+      setSelectedWarehouse('');
+      setExpectedDeliveryDate('');
+      setNotes('');
+      setSelectedItems(new Map());
+    }
+  }, [open, initialData, editMode]);
 
   const fetchSuppliers = async () => {
     try {
@@ -183,18 +223,21 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
       return;
     }
 
-    if (selectedItems.size === 0) {
-      toast.error('Please select at least one item');
-      return;
-    }
+    // Only validate items for new PO creation (not editing)
+    if (!editMode) {
+      if (selectedItems.size === 0) {
+        toast.error('Please select at least one item');
+        return;
+      }
 
-    const hasInvalidItems = Array.from(selectedItems.values()).some(
-      item => !item.unitCost || item.unitCost <= 0
-    );
+      const hasInvalidItems = Array.from(selectedItems.values()).some(
+        item => !item.unitCost || item.unitCost <= 0
+      );
 
-    if (hasInvalidItems) {
-      toast.error('Please enter unit price for all selected items');
-      return;
+      if (hasInvalidItems) {
+        toast.error('Please enter unit price for all selected items');
+        return;
+      }
     }
 
     const poData = {
@@ -205,6 +248,7 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
       expectedDeliveryDate: expectedDeliveryDate || undefined,
       notes: notes || undefined,
       items: Array.from(selectedItems.values()),
+      ...(editMode && initialData?.editId ? { editMode: true, editId: initialData.editId } : {}),
     };
 
     onProceedToConfirm(poData);
@@ -221,7 +265,7 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[90rem] sm:max-w-[90rem] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create Purchase Order</DialogTitle>
+          <DialogTitle>{editMode ? 'Edit Purchase Order' : 'Create Purchase Order'}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -335,10 +379,11 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Items to Purchase</h3>
-              <div className="flex items-center gap-2">
+          {!editMode && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Items to Purchase</h3>
+                <div className="flex items-center gap-2">
                 <div className="relative">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -445,13 +490,22 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
               </div>
             </div>
           </div>
+          )}
+
+          {editMode && (
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-sm text-muted-foreground">
+                Note: Items cannot be edited for existing purchase orders. Only header information (supplier, warehouse, delivery method, dates, and notes) can be updated.
+              </p>
+            </div>
+          )}
 
           <div className="flex gap-2 justify-end">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button onClick={handleNext}>
-              Next
+              {editMode ? 'Update' : 'Next'}
             </Button>
           </div>
         </div>
