@@ -28,6 +28,7 @@ None specified yet
 - Inventory Items Management: Complete CRUD operations for inventory items with product and bin associations, batch/lot tracking, expiry dates, and cost tracking.
 - Stock Information: Aggregated view of inventory by product showing available quantities, location counts, and detailed location breakdowns via modal.
 - Workflow Configuration: Tenant-specific workflow customization for Purchase Orders (PO) and Sales Orders (SO) with toggleable steps. Standard PO workflow includes Create, Approve, Receive, Putaway, and Complete. Standard SO workflow includes Create, Allocate, Pick, Pack, Ship, Deliver, and Complete.
+- Audit Logging: Comprehensive audit trail system tracking all user actions, state changes, and data modifications. Includes internal logging service for easy integration and read-only REST APIs for querying audit history.
 
 ### System Design Choices
 - **UI/UX**: Utilizes shadcn/ui and Radix UI for a consistent and accessible component library. Warehouse hierarchy uses an accordion-based visualization. Critical fixes for Radix UI Dialogs prevent common bugs:
@@ -39,6 +40,7 @@ None specified yet
 - **Authentication**: JWT-based authentication for secure access, with separate tokens for access, refresh, and password reset.
 - **Workflow Module**: Database-driven workflow configuration using `workflows` and `workflow_steps` tables. `isActive` field allows per-tenant customization. When loading workflow step states, all `setState` calls must be batched into a single update to prevent React state race conditions.
 - **Document Storage Strategy**: Generated documents (PO, SO, Packing Slips, etc.) are stored as HTML files (not database blobs) in `public/documents/tenants/{tenantId}/{docType}/{year}/` with metadata in a `JSONB` column in the `generated_documents` table. This supports easy reprinting, CDN readiness, and versioning. `warehouse_id` is included in `purchase_orders` and displayed in PO documents.
+- **Audit Logging**: Simple, practical audit trail system designed for SME/SMB market. Uses `audit_logs` table to track all critical operations (create, update, delete, state changes). Internal `logAudit()` service for easy integration throughout codebase. REST APIs available at `/api/audit-logs` for querying and `/api/audit-logs/resource/:type/:id` for viewing entity history. Supports filtering by module, action, resource, user, date range, and status.
 
 ## External Dependencies
 - **PostgreSQL**: Primary database for all application data, managed via Drizzle ORM.
