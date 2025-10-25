@@ -31,6 +31,7 @@ import permissionRoutes from "./routes/system/permission";
 import roleRoutes from "./routes/system/role";
 import tenantRoutes from "./routes/system/tenant";
 import userRoutes from "./routes/system/user";
+import auditLogRoutes from "./routes/auditLogRoutes";
 
 
 const app = express();
@@ -106,6 +107,7 @@ app.use('/api/system/option', optionRoutes);
 app.use('/api/system/user', userRoutes);
 app.use('/api/system/module-authorization', moduleAuthorizationRoutes);
 app.use('/api/system/module-registry', moduleRegistryRoutes);
+app.use('/api/audit-logs', auditLogRoutes);
 
 // demo routes
 app.use('/api/demo/department', departmentRoutes);

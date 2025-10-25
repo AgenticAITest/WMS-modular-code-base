@@ -1,0 +1,60 @@
+/ src/server/lib/db/schema/audit.ts
+import { pgTable, uuid, varchar, text, timestamp, jsonb, index, boolean } from 'drizzle-orm/pg-core';
+import { tenant, user } from './system';
+
+export const auditLogs = pgTable('audit_logs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Multi-tenancy
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenant.id),
+  
+  // Who (nullable for system actions)
+  userId: uuid('user_id')
+    .references(() => user.id),
+  
+  // What
+  module: varchar('module', { length: 100 }).notNull(), // 'purchase-order', 'warehouse-setup'
+  action: varchar('action', { length: 100 }).notNull(), // 'create', 'update', 'delete', 'approve'
+  resourceType: varchar('resource_type', { length: 100 }).notNull(), // 'purchase_order', 'warehouse'
+  resourceId: varchar('resource_id', { length: 255 }).notNull(), // UUID or other ID
+  
+  // Change tracking
+  oldValue: jsonb('old_value'), // Snapshot before change
+  newValue: jsonb('new_value'), // Snapshot after change
+  changedFields: jsonb('changed_fields'), // Array of field names that changed
+  
+  // Context
+  description: text('description'), // Human-readable description
+  metadata: jsonb('metadata'), // Additional context
+  
+  // Result
+  status: varchar('status', { length: 20 }).notNull().default('success'), // 'success', 'failure'
+  errorMessage: text('error_message'), // If failed
+  
+  // Request tracking
+  sessionId: varchar('session_id', { length: 255 }),
+  requestId: varchar('request_id', { length: 255 }),
+  
+  // Security context
+  ipAddress: varchar('ip_address', { length: 50 }),
+  userAgent: text('user_agent'),
+  
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  
+  // Retention
+  retentionUntil: timestamp('retention_until'),
+  isArchived: boolean('is_archived').default(false).notNull(),
+},
+(table) => [
+  // Indexes for common queries
+  index('audit_logs_tenant_idx').on(table.tenantId),
+  index('audit_logs_user_idx').on(table.userId),
+  index('audit_logs_created_at_idx').on(table.createdAt.desc()),
+  index('audit_logs_resource_idx').on(table.resourceType, table.resourceId),
+  index('audit_logs_tenant_time_idx').on(table.tenantId, table.createdAt.desc()),
+  index('audit_logs_module_idx').on(table.module),
+  index('audit_logs_action_idx').on(table.action),
+]);
