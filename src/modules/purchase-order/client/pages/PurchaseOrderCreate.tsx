@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@client/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@client/components/ui/card';
-import { Plus } from 'lucide-react';
+import { Plus, Eye, Pencil, Trash2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -10,6 +10,16 @@ import {
   TableHeader,
   TableRow,
 } from '@client/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@client/components/ui/alert-dialog';
 import { withModuleAuthorization } from '@client/components/auth/withModuleAuthorization';
 import { CreatePOModal } from '../components/CreatePOModal';
 import { POConfirmationModal } from '../components/POConfirmationModal';
@@ -21,10 +31,13 @@ const PurchaseOrderCreate: React.FC = () => {
   const [unapprovedPOs, setUnapprovedPOs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isPrintViewOpen, setIsPrintViewOpen] = useState(false);
   const [selectedPOData, setSelectedPOData] = useState<any>(null);
   const [createdPO, setCreatedPO] = useState<any>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [poToDelete, setPOToDelete] = useState<any>(null);
 
   useEffect(() => {
     fetchUnapprovedPOs();
@@ -95,6 +108,84 @@ const PurchaseOrderCreate: React.FC = () => {
     }
   };
 
+  const handleEditPO = async (poId: string) => {
+    try {
+      const response = await axios.get(`/api/modules/purchase-order/orders/${poId}`);
+      if (response.data.success) {
+        const poData = response.data.data;
+        // Transform PO data to match CreatePOModal format
+        setSelectedPOData({
+          supplierId: poData.supplierId,
+          supplierLocationId: poData.supplierLocationId,
+          deliveryMethod: poData.deliveryMethod,
+          warehouseId: poData.warehouseId,
+          expectedDeliveryDate: poData.expectedDeliveryDate,
+          notes: poData.notes,
+          items: poData.items.map((item: any) => ({
+            productId: item.productId,
+            orderedQuantity: item.orderedQuantity,
+            unitCost: item.unitCost,
+            expectedExpiryDate: item.expectedExpiryDate,
+            notes: item.notes,
+          })),
+          editMode: true,
+          editId: poId,
+        });
+        setIsEditModalOpen(true);
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to fetch PO details';
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleUpdatePO = async (poData: any) => {
+    try {
+      const response = await axios.put(
+        `/api/modules/purchase-order/orders/${poData.editId}`,
+        {
+          supplierId: poData.supplierId,
+          supplierLocationId: poData.supplierLocationId,
+          deliveryMethod: poData.deliveryMethod,
+          warehouseId: poData.warehouseId,
+          expectedDeliveryDate: poData.expectedDeliveryDate,
+          notes: poData.notes,
+        }
+      );
+
+      if (response.data.success) {
+        toast.success('Purchase Order updated successfully');
+        setIsEditModalOpen(false);
+        setSelectedPOData(null);
+        fetchUnapprovedPOs();
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to update purchase order';
+      toast.error(errorMessage);
+      throw error;
+    }
+  };
+
+  const handleDeleteClick = (po: any) => {
+    setPOToDelete(po);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!poToDelete) return;
+
+    try {
+      await axios.delete(`/api/modules/purchase-order/orders/${poToDelete.id}`);
+      toast.success(`Purchase Order ${poToDelete.orderNumber} deleted successfully`);
+      setDeleteDialogOpen(false);
+      setPOToDelete(null);
+      fetchUnapprovedPOs();
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to delete purchase order';
+      toast.error(errorMessage);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -149,13 +240,33 @@ const PurchaseOrderCreate: React.FC = () => {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => viewPODetails(po.id)}
-                        >
-                          View
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => viewPODetails(po.id)}
+                            title="View PO"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditPO(po.id)}
+                            title="Edit PO"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteClick(po)}
+                            title="Delete PO"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -170,6 +281,14 @@ const PurchaseOrderCreate: React.FC = () => {
         open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
         onProceedToConfirm={handleProceedToConfirm}
+      />
+
+      <CreatePOModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        onProceedToConfirm={handleUpdatePO}
+        initialData={selectedPOData}
+        editMode={true}
       />
 
       <POConfirmationModal
@@ -189,6 +308,30 @@ const PurchaseOrderCreate: React.FC = () => {
         poData={createdPO}
         onClose={handlePrintViewClose}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Purchase Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete purchase order{' '}
+              <span className="font-semibold">{poToDelete?.orderNumber}</span>?
+              This action cannot be undone. All items and generated documents will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPOToDelete(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

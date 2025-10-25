@@ -5,13 +5,16 @@ import { suppliers, supplierLocations, products } from '@modules/master-data/ser
 import { inventoryItems } from '@modules/inventory-items/server/lib/db/schemas/inventoryItems';
 import { warehouses } from '@modules/warehouse-setup/server/lib/db/schemas/warehouseSetup';
 import { user } from '@server/lib/db/schema/system';
-import { documentNumberConfig } from '@modules/document-numbering/server/lib/db/schemas/documentNumbering';
+import { documentNumberConfig, generatedDocuments, documentNumberHistory } from '@modules/document-numbering/server/lib/db/schemas/documentNumbering';
 import { authenticated, authorized } from '@server/middleware/authMiddleware';
 import { eq, and, desc, count, ilike, or, sql, sum, inArray } from 'drizzle-orm';
 import { checkModuleAuthorization } from '@server/middleware/moduleAuthMiddleware';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import { PODocumentGenerator } from '../services/poDocumentGenerator';
+import { logAudit, getClientIp } from '@server/services/auditService';
+import fs from 'fs/promises';
+import path from 'path';
 
 const router = express.Router();
 router.use(authenticated());
@@ -805,6 +808,10 @@ router.get('/orders', authorized('ADMIN', 'purchase-order.view'), async (req, re
 
     if (statusFilter) {
       whereConditions.push(eq(purchaseOrders.status, statusFilter as any));
+      // For pending status, also filter by workflowState='approve' to show only unapproved POs
+      if (statusFilter === 'pending') {
+        whereConditions.push(eq(purchaseOrders.workflowState, 'approve'));
+      }
     }
 
     // Get total count
@@ -1386,6 +1393,14 @@ router.put('/orders/:id', authorized('ADMIN', 'purchase-order.edit'), async (req
       });
     }
 
+    // Only allow editing if PO is still unapproved
+    if (existingOrder.status !== 'pending' || existingOrder.workflowState !== 'approve') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot edit purchase order: only unapproved purchase orders can be edited',
+      });
+    }
+
     // Validate deliveryMethod if it's being updated
     if (updateData.deliveryMethod && !['delivery', 'pickup'].includes(updateData.deliveryMethod)) {
       return res.status(400).json({
@@ -1419,6 +1434,17 @@ router.put('/orders/:id', authorized('ADMIN', 'purchase-order.edit'), async (req
     delete updateData.tenantId;
     delete updateData.createdAt;
     delete updateData.createdBy;
+
+    // Track changed fields for audit log
+    const changedFields: any = {};
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] !== existingOrder[key as keyof typeof existingOrder]) {
+        changedFields[key] = {
+          from: existingOrder[key as keyof typeof existingOrder],
+          to: updateData[key]
+        };
+      }
+    });
 
     const [updatedOrder] = await db
       .update(purchaseOrders)
@@ -1534,6 +1560,21 @@ router.put('/orders/:id', authorized('ADMIN', 'purchase-order.edit'), async (req
       }
     }
 
+    // Log audit trail
+    if (Object.keys(changedFields).length > 0) {
+      await logAudit({
+        tenantId,
+        userId,
+        module: 'purchase-order',
+        action: 'update',
+        resourceType: 'purchase_order',
+        resourceId: id,
+        description: `Updated unapproved purchase order ${existingOrder.orderNumber}`,
+        changedFields,
+        ipAddress: getClientIp(req),
+      });
+    }
+
     res.json({
       success: true,
       data: updatedOrder,
@@ -1574,22 +1615,101 @@ router.put('/orders/:id', authorized('ADMIN', 'purchase-order.edit'), async (req
 router.delete('/orders/:id', authorized('ADMIN', 'purchase-order.delete'), async (req, res) => {
   try {
     const tenantId = req.user!.activeTenantId;
+    const userId = req.user!.id;
     const { id } = req.params;
 
-    const result = await db
-      .delete(purchaseOrders)
+    // Fetch existing order first to check if it's unapproved
+    const [existingOrder] = await db
+      .select()
+      .from(purchaseOrders)
       .where(and(
         eq(purchaseOrders.id, id),
         eq(purchaseOrders.tenantId, tenantId)
-      ))
-      .returning();
+      ));
 
-    if (result.length === 0) {
+    if (!existingOrder) {
       return res.status(404).json({
         success: false,
         message: 'Purchase order not found',
       });
     }
+
+    // Only allow deleting if PO is still unapproved
+    if (existingOrder.status !== 'pending' || existingOrder.workflowState !== 'approve') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot delete purchase order: only unapproved purchase orders can be deleted',
+      });
+    }
+
+    // Use transaction to ensure atomicity
+    await db.transaction(async (tx) => {
+      // 1. Find and delete generated document files from filesystem
+      const [generatedDoc] = await tx
+        .select()
+        .from(generatedDocuments)
+        .where(and(
+          eq(generatedDocuments.tenantId, tenantId),
+          eq(generatedDocuments.referenceType, 'purchase_order'),
+          eq(generatedDocuments.referenceId, id)
+        ));
+
+      if (generatedDoc) {
+        // Delete physical file from filesystem
+        try {
+          const files = generatedDoc.files as any;
+          if (files?.html?.path) {
+            const filePath = path.join(process.cwd(), 'storage', 'purchase-order', files.html.path.replace('storage/purchase-order/', ''));
+            await fs.unlink(filePath);
+            console.log(`Deleted file: ${filePath}`);
+          }
+        } catch (fileError) {
+          console.error('Error deleting physical file:', fileError);
+          // Continue with database deletion even if file deletion fails
+        }
+
+        // Delete generated document record
+        await tx
+          .delete(generatedDocuments)
+          .where(eq(generatedDocuments.id, generatedDoc.id));
+      }
+
+      // 2. Delete document number history
+      await tx
+        .delete(documentNumberHistory)
+        .where(and(
+          eq(documentNumberHistory.tenantId, tenantId),
+          eq(documentNumberHistory.documentId, id)
+        ));
+
+      // 3. Delete purchase order items (should cascade, but explicit is better)
+      await tx
+        .delete(purchaseOrderItems)
+        .where(and(
+          eq(purchaseOrderItems.purchaseOrderId, id),
+          eq(purchaseOrderItems.tenantId, tenantId)
+        ));
+
+      // 4. Delete purchase order
+      await tx
+        .delete(purchaseOrders)
+        .where(and(
+          eq(purchaseOrders.id, id),
+          eq(purchaseOrders.tenantId, tenantId)
+        ));
+    });
+
+    // Log audit trail
+    await logAudit({
+      tenantId,
+      userId,
+      module: 'purchase-order',
+      action: 'delete',
+      resourceType: 'purchase_order',
+      resourceId: id,
+      description: `Deleted unapproved purchase order ${existingOrder.orderNumber}`,
+      ipAddress: getClientIp(req),
+    });
 
     res.status(204).send();
   } catch (error) {
