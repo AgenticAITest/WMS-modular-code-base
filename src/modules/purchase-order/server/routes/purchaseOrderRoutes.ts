@@ -12,6 +12,7 @@ import { checkModuleAuthorization } from '@server/middleware/moduleAuthMiddlewar
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import { PODocumentGenerator } from '../services/poDocumentGenerator';
+import { logAudit, getClientIp } from '@server/services/auditService';
 
 const router = express.Router();
 router.use(authenticated());
@@ -1322,6 +1323,30 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
         orderItems,
         documentInfo
       };
+    });
+
+    // Log audit trail
+    await logAudit({
+      tenantId,
+      userId: currentUser?.id,
+      module: 'purchase-order',
+      action: 'create',
+      resourceType: 'purchase_order',
+      resourceId: orderId,
+      description: `Created purchase order ${orderNumber} for supplier ${result.completeOrder.supplierName} with ${items.length} item(s)`,
+      newState: JSON.stringify({
+        orderNumber,
+        supplierId,
+        supplierName: result.completeOrder.supplierName,
+        warehouseId,
+        warehouseName: result.completeOrder.warehouseName,
+        deliveryMethod,
+        totalAmount: totalAmount.toFixed(2),
+        itemCount: items.length,
+        status: 'pending',
+        workflowState: 'approve'
+      }),
+      ipAddress: getClientIp(req),
     });
 
     res.status(201).json({
