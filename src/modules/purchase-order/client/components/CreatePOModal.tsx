@@ -223,21 +223,19 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
       return;
     }
 
-    // Only validate items for new PO creation (not editing)
-    if (!editMode) {
-      if (selectedItems.size === 0) {
-        toast.error('Please select at least one item');
-        return;
-      }
+    // Validate items (both create and edit modes)
+    if (selectedItems.size === 0) {
+      toast.error('Please select at least one item');
+      return;
+    }
 
-      const hasInvalidItems = Array.from(selectedItems.values()).some(
-        item => !item.unitCost || item.unitCost <= 0
-      );
+    const hasInvalidItems = Array.from(selectedItems.values()).some(
+      item => !item.unitCost || item.unitCost <= 0
+    );
 
-      if (hasInvalidItems) {
-        toast.error('Please enter unit price for all selected items');
-        return;
-      }
+    if (hasInvalidItems) {
+      toast.error('Please enter unit price for all selected items');
+      return;
     }
 
     const poData = {
@@ -379,11 +377,10 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
             </div>
           </div>
 
-          {!editMode && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Items to Purchase</h3>
-                <div className="flex items-center gap-2">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Items to Purchase</h3>
+              <div className="flex items-center gap-2">
                 <div className="relative">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -490,15 +487,6 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({
               </div>
             </div>
           </div>
-          )}
-
-          {editMode && (
-            <div className="p-4 bg-muted rounded-lg">
-              <p className="text-sm text-muted-foreground">
-                Note: Items cannot be edited for existing purchase orders. Only header information (supplier, warehouse, delivery method, dates, and notes) can be updated.
-              </p>
-            </div>
-          )}
 
           <div className="flex gap-2 justify-end">
             <Button variant="outline" onClick={() => onOpenChange(false)}>

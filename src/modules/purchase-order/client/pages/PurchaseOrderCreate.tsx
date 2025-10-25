@@ -123,8 +123,10 @@ const PurchaseOrderCreate: React.FC = () => {
           notes: poData.notes,
           items: poData.items.map((item: any) => ({
             productId: item.productId,
+            sku: item.productSku, // Include SKU for display
+            name: item.productName, // Include name for display
             orderedQuantity: item.orderedQuantity,
-            unitCost: item.unitCost,
+            unitCost: parseFloat(item.unitCost || 0), // Parse to number
             expectedExpiryDate: item.expectedExpiryDate,
             notes: item.notes,
           })),
@@ -150,6 +152,7 @@ const PurchaseOrderCreate: React.FC = () => {
           warehouseId: poData.warehouseId,
           expectedDeliveryDate: poData.expectedDeliveryDate,
           notes: poData.notes,
+          items: poData.items, // Include items for editing
         }
       );
 
