@@ -15,6 +15,7 @@ import { warehouseSetupReactRoutes } from '../modules/warehouse-setup/client/rou
 import { inventoryItemsReactRoutes } from '../modules/inventory-items/client/routes/inventoryItemsReactRoutes';
 import { purchaseOrderReactRoutes } from '../modules/purchase-order/client/routes/purchaseOrderReactRoutes';
 import { workflowReactRoutes } from '../modules/workflow/client/routes/workflowReactRoutes';
+import { reportsReactRoutes } from '../modules/reports/client/routes/reportsReactRoutes';
 import ForgetPassword from "./pages/auth/ForgetPassword";
 import RegisterTenant from "./pages/auth/RegisterTenant";
 import ResetPassword from "./pages/auth/ResetPassword";
@@ -170,6 +171,7 @@ export const router = createBrowserRouter([
             inventoryItemsReactRoutes("modules/inventory-items"),
             purchaseOrderReactRoutes("modules/purchase-order"),
             workflowReactRoutes("modules/workflow"),
+            reportsReactRoutes("modules/reports"),
 ],
       },
     ],

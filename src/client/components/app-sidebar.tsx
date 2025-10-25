@@ -23,6 +23,7 @@ import { warehouseSetupSidebarMenus } from "../../modules/warehouse-setup/client
 import { inventoryItemsSidebarMenus } from "../../modules/inventory-items/client/menus/sideBarMenus"
 import { purchaseOrderSidebarMenus } from "../../modules/purchase-order/client/menus/sideBarMenus"
 import { workflowSidebarMenus } from "../../modules/workflow/client/menus/sideBarMenus"
+import { reportsSidebarMenus } from "../../modules/reports/client/menus/sideBarMenus"
 // This is sample data.
 const data = {
   // teams: [
@@ -153,6 +154,13 @@ const data = {
 
 
     workflowSidebarMenus,
+
+
+
+
+
+    reportsSidebarMenus,
+
 
 
 
