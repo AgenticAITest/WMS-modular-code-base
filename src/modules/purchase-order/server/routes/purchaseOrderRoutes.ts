@@ -1461,10 +1461,28 @@ router.put('/orders/:id', authorized('ADMIN', 'purchase-order.edit'), async (req
       });
     }
 
+    // Extract items if provided
+    const items = updateData.items;
+    delete updateData.items;
+
     delete updateData.id;
     delete updateData.tenantId;
     delete updateData.createdAt;
     delete updateData.createdBy;
+    delete updateData.orderNumber; // Don't allow changing PO number
+    delete updateData.status; // Don't allow changing status directly (unless approving)
+    delete updateData.workflowState; // Don't allow changing workflow state directly
+
+    // Calculate total amount if items are provided
+    if (items && items.length > 0) {
+      const totalAmount = items.reduce((sum: number, item: any) => {
+        const itemTotal = item.unitCost && item.orderedQuantity
+          ? parseFloat(item.unitCost) * parseInt(item.orderedQuantity)
+          : 0;
+        return sum + itemTotal;
+      }, 0);
+      updateData.totalAmount = totalAmount.toFixed(2);
+    }
 
     // Track changed fields for audit log
     const changedFields: any = {};
@@ -1477,14 +1495,56 @@ router.put('/orders/:id', authorized('ADMIN', 'purchase-order.edit'), async (req
       }
     });
 
-    const [updatedOrder] = await db
-      .update(purchaseOrders)
-      .set({ ...updateData, updatedAt: new Date() })
-      .where(and(
-        eq(purchaseOrders.id, id),
-        eq(purchaseOrders.tenantId, tenantId)
-      ))
-      .returning();
+    // Use transaction to update both order and items atomically
+    const result = await db.transaction(async (tx) => {
+      // Update purchase order
+      const [updatedOrder] = await tx
+        .update(purchaseOrders)
+        .set({ ...updateData, updatedAt: new Date() })
+        .where(and(
+          eq(purchaseOrders.id, id),
+          eq(purchaseOrders.tenantId, tenantId)
+        ))
+        .returning();
+
+      // If items are provided, replace all items
+      if (items && items.length > 0) {
+        // Delete existing items
+        await tx
+          .delete(purchaseOrderItems)
+          .where(and(
+            eq(purchaseOrderItems.purchaseOrderId, id),
+            eq(purchaseOrderItems.tenantId, tenantId)
+          ));
+
+        // Insert new items
+        const itemsToInsert = items.map((item: any) => ({
+          id: uuidv4(),
+          purchaseOrderId: id,
+          productId: item.productId,
+          tenantId,
+          orderedQuantity: item.orderedQuantity,
+          receivedQuantity: 0,
+          unitCost: item.unitCost || null,
+          totalCost: item.unitCost && item.orderedQuantity
+            ? (parseFloat(item.unitCost) * parseInt(item.orderedQuantity)).toFixed(2)
+            : null,
+          expectedExpiryDate: item.expectedExpiryDate || null,
+          notes: item.notes || null,
+        }));
+
+        await tx.insert(purchaseOrderItems).values(itemsToInsert);
+
+        changedFields.items = {
+          from: 'previous items',
+          to: `${items.length} item(s) updated`
+        };
+      }
+
+      return updatedOrder;
+    });
+
+    const updatedOrder = result;
 
     if (!updatedOrder) {
       return res.status(404).json({
