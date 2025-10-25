@@ -1334,7 +1334,7 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
       resourceType: 'purchase_order',
       resourceId: orderId,
       description: `Created purchase order ${orderNumber} for supplier ${result.completeOrder.supplierName} with ${items.length} item(s)`,
-      newState: JSON.stringify({
+      changedFields: {
         orderNumber,
         supplierId,
         supplierName: result.completeOrder.supplierName,
@@ -1345,7 +1345,7 @@ router.post('/orders', authorized('ADMIN', 'purchase-order.create'), async (req,
         itemCount: items.length,
         status: 'pending',
         workflowState: 'approve'
-      }),
+      },
       ipAddress: getClientIp(req),
     });
 

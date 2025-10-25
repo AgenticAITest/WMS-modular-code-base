@@ -1,5 +1,15 @@
 # Audit Logging Usage Examples
 
+## Field Usage Guide
+
+### Important: Understanding Field Purpose
+
+- **`changedFields`** (JSONB) - Store detailed data, field changes, or any complex objects
+- **`previousState`** (VARCHAR 50) - ONLY for workflow states (e.g., 'approve', 'receive')
+- **`newState`** (VARCHAR 50) - ONLY for workflow states (e.g., 'approve', 'receive')
+
+⚠️ **Common Mistake**: Do NOT use `newState` for storing JSON objects - it's only 50 characters!
+
 ## Internal Logging Service
 
 ### Basic Usage
@@ -7,7 +17,7 @@
 ```typescript
 import { logAudit, getClientIp } from '@server/services/auditService';
 
-// Log a create action
+// ✅ CORRECT: Log a create action with changedFields
 await logAudit({
   tenantId: req.user.activeTenantId,
   userId: req.user.id,
@@ -16,10 +26,16 @@ await logAudit({
   resourceType: 'purchase_order',
   resourceId: newOrder.id,
   description: `Created PO ${newOrder.orderNumber}`,
+  changedFields: {
+    orderNumber: newOrder.orderNumber,
+    supplierId: newOrder.supplierId,
+    totalAmount: newOrder.totalAmount,
+    status: 'pending'
+  },
   ipAddress: getClientIp(req),
 });
 
-// Log an update with field changes
+// ✅ CORRECT: Log an update with field changes
 await logAudit({
   tenantId: req.user.activeTenantId,
   userId: req.user.id,
@@ -35,7 +51,7 @@ await logAudit({
   ipAddress: getClientIp(req),
 });
 
-// Log a state transition
+// ✅ CORRECT: Log a workflow state transition
 await logAudit({
   tenantId: req.user.activeTenantId,
   userId: req.user.id,
@@ -43,8 +59,8 @@ await logAudit({
   action: 'state_change',
   resourceType: 'purchase_order',
   resourceId: orderId,
-  previousState: 'approve',
-  newState: 'receive',
+  previousState: 'approve',  // ✅ Short workflow state
+  newState: 'receive',       // ✅ Short workflow state
   description: 'Transitioned to receive state',
   ipAddress: getClientIp(req),
 });
