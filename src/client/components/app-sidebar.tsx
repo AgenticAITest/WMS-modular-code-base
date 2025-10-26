@@ -157,6 +157,11 @@ const data = {
 
     reportsSidebarMenus,
 
+
+
+
+
+
     sampleModuleSidebarMenus,
   ],
 }

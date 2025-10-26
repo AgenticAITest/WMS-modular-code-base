@@ -37,6 +37,7 @@ import {
 import axios from 'axios';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { withModuleAuthorization } from '@client/components/auth/withModuleAuthorization';
 
 interface AuditLog {
   id: string;
@@ -71,11 +72,11 @@ const AuditLog: React.FC = () => {
   // Filters
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [moduleFilter, setModuleFilter] = useState('');
-  const [actionFilter, setActionFilter] = useState('');
-  const [resourceTypeFilter, setResourceTypeFilter] = useState('');
+  const [moduleFilter, setModuleFilter] = useState('all');
+  const [actionFilter, setActionFilter] = useState('all');
+  const [resourceTypeFilter, setResourceTypeFilter] = useState('all');
   const [userIdFilter, setUserIdFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   // Available filter options
@@ -126,11 +127,11 @@ const AuditLog: React.FC = () => {
 
       if (dateFrom) params.dateFrom = dateFrom;
       if (dateTo) params.dateTo = dateTo;
-      if (moduleFilter) params.module = moduleFilter;
-      if (actionFilter) params.action = actionFilter;
-      if (resourceTypeFilter) params.resourceType = resourceTypeFilter;
+      if (moduleFilter && moduleFilter !== 'all') params.module = moduleFilter;
+      if (actionFilter && actionFilter !== 'all') params.action = actionFilter;
+      if (resourceTypeFilter && resourceTypeFilter !== 'all') params.resourceType = resourceTypeFilter;
       if (userIdFilter) params.userId = userIdFilter;
-      if (statusFilter) params.status = statusFilter;
+      if (statusFilter && statusFilter !== 'all') params.status = statusFilter;
       if (searchTerm) params.search = searchTerm;
 
       const response = await axios.get('/api/audit-logs', { params });
@@ -156,11 +157,11 @@ const AuditLog: React.FC = () => {
   const handleClearFilters = () => {
     setDateFrom('');
     setDateTo('');
-    setModuleFilter('');
-    setActionFilter('');
-    setResourceTypeFilter('');
+    setModuleFilter('all');
+    setActionFilter('all');
+    setResourceTypeFilter('all');
     setUserIdFilter('');
-    setStatusFilter('');
+    setStatusFilter('all');
     setSearchTerm('');
     setCurrentPage(1);
     setTimeout(() => fetchAuditLogs(), 100);
@@ -191,11 +192,11 @@ const AuditLog: React.FC = () => {
 
       if (dateFrom) params.dateFrom = dateFrom;
       if (dateTo) params.dateTo = dateTo;
-      if (moduleFilter) params.module = moduleFilter;
-      if (actionFilter) params.action = actionFilter;
-      if (resourceTypeFilter) params.resourceType = resourceTypeFilter;
+      if (moduleFilter && moduleFilter !== 'all') params.module = moduleFilter;
+      if (actionFilter && actionFilter !== 'all') params.action = actionFilter;
+      if (resourceTypeFilter && resourceTypeFilter !== 'all') params.resourceType = resourceTypeFilter;
       if (userIdFilter) params.userId = userIdFilter;
-      if (statusFilter) params.status = statusFilter;
+      if (statusFilter && statusFilter !== 'all') params.status = statusFilter;
       if (searchTerm) params.search = searchTerm;
 
       const response = await axios.get('/api/audit-logs', { params });
@@ -255,8 +256,9 @@ const AuditLog: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  const getStatusBadgeClass = (status: string) => {
-    switch (status.toLowerCase()) {
+  const getStatusBadgeClass = (status: string | null) => {
+    const statusLower = (status ?? '').toLowerCase();
+    switch (statusLower) {
       case 'success':
         return 'bg-green-50 text-green-800 ring-green-600/20';
       case 'failed':
@@ -353,7 +355,7 @@ const AuditLog: React.FC = () => {
                     <SelectValue placeholder="All modules" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All modules</SelectItem>
+                    <SelectItem value="all">All modules</SelectItem>
                     {modules.map((module) => (
                       <SelectItem key={module} value={module}>
                         {module}
@@ -369,7 +371,7 @@ const AuditLog: React.FC = () => {
                     <SelectValue placeholder="All actions" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All actions</SelectItem>
+                    <SelectItem value="all">All actions</SelectItem>
                     {actions.map((action) => (
                       <SelectItem key={action} value={action}>
                         {action}
@@ -389,7 +391,7 @@ const AuditLog: React.FC = () => {
                     <SelectValue placeholder="All types" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All types</SelectItem>
+                    <SelectItem value="all">All types</SelectItem>
                     {resourceTypes.map((type) => (
                       <SelectItem key={type} value={type}>
                         {type}
@@ -405,7 +407,7 @@ const AuditLog: React.FC = () => {
                     <SelectValue placeholder="All statuses" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All statuses</SelectItem>
+                    <SelectItem value="all">All statuses</SelectItem>
                     <SelectItem value="success">Success</SelectItem>
                     <SelectItem value="failed">Failed</SelectItem>
                     <SelectItem value="error">Error</SelectItem>
@@ -501,7 +503,7 @@ const AuditLog: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${getStatusBadgeClass(log.status)}`}>
-                              {log.status}
+                              {log.status || 'N/A'}
                             </span>
                           </TableCell>
                           <TableCell>
@@ -574,7 +576,7 @@ const AuditLog: React.FC = () => {
                   <Label className="text-muted-foreground">Status</Label>
                   <p>
                     <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${getStatusBadgeClass(selectedLog.status)}`}>
-                      {selectedLog.status}
+                      {selectedLog.status || 'N/A'}
                     </span>
                   </p>
                 </div>
