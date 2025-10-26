@@ -1,0 +1,118 @@
+{
+    "success": true,
+    "data": [
+        {
+            "id": "6759ba27-8c7b-40ee-8cfc-36ce3d5e5a9c",
+            "tenantId": "8e017478-2f5f-4be3-b8b6-e389436ca28a",
+            "userId": null,
+            "module": "purchase-order",
+            "action": "update",
+            "resourceType": "purchase_order",
+            "resourceId": "8560794d-7e1b-4ba5-b607-0cfaa598cc00",
+            "changedFields": {
+                "items": {
+                    "to": "3 item(s) updated",
+                    "from": "previous items"
+                },
+                "totalAmount": {
+                    "to": "3100.00",
+                    "from": "3200.00"
+                }
+            },
+            "description": "Updated unapproved purchase order PO-2510-WH-0001",
+            "previousState": null,
+            "newState": null,
+            "batchId": null,
+            "status": "success",
+            "errorMessage": null,
+            "ipAddress": "139.192.83.232",
+            "createdAt": "2025-10-26T02:48:29.174Z"
+        },
+        {
+            "id": "289ce296-229c-4b98-9f4e-0769000c3ef2",
+            "tenantId": "8e017478-2f5f-4be3-b8b6-e389436ca28a",
+            "userId": null,
+            "module": "purchase-order",
+            "action": "update",
+            "resourceType": "purchase_order",
+            "resourceId": "8560794d-7e1b-4ba5-b607-0cfaa598cc00",
+            "changedFields": {
+                "items": {
+                    "to": "3 item(s) updated",
+                    "from": "previous items"
+                },
+                "totalAmount": {
+                    "to": "3200.00",
+                    "from": "3100.00"
+                }
+            },
+            "description": "Updated unapproved purchase order PO-2510-WH-0001",
+            "previousState": null,
+            "newState": null,
+            "batchId": null,
+            "status": "success",
+            "errorMessage": null,
+            "ipAddress": "139.192.83.232",
+            "createdAt": "2025-10-25T13:13:17.901Z"
+        },
+        {
+            "id": "50d2c5a1-fd14-43ec-bcbf-a1faf35356f0",
+            "tenantId": "8e017478-2f5f-4be3-b8b6-e389436ca28a",
+            "userId": null,
+            "module": "purchase-order",
+            "action": "update",
+            "resourceType": "purchase_order",
+            "resourceId": "8560794d-7e1b-4ba5-b607-0cfaa598cc00",
+            "changedFields": {
+                "items": {
+                    "to": "3 item(s) updated",
+                    "from": "previous items"
+                },
+                "expectedDeliveryDate": {
+                    "to": "2025-11-08",
+                    "from": "2025-11-07"
+                }
+            },
+            "description": "Updated unapproved purchase order PO-2510-WH-0001",
+            "previousState": null,
+            "newState": null,
+            "batchId": null,
+            "status": "success",
+            "errorMessage": null,
+            "ipAddress": "139.192.83.232",
+            "createdAt": "2025-10-25T13:12:30.452Z"
+        },
+        {
+            "id": "2e018da5-bd8e-43d3-a9f1-7cd9a003575e",
+            "tenantId": "8e017478-2f5f-4be3-b8b6-e389436ca28a",
+            "userId": null,
+            "module": "purchase-order",
+            "action": "update",
+            "resourceType": "purchase_order",
+            "resourceId": "8560794d-7e1b-4ba5-b607-0cfaa598cc00",
+            "changedFields": {
+                "items": {
+                    "to": "3 item(s) updated",
+                    "from": "previous items"
+                },
+                "totalAmount": {
+                    "to": "3100.00",
+                    "from": "2850.00"
+                }
+            },
+            "description": "Updated unapproved purchase order PO-2510-WH-0001",
+            "previousState": null,
+            "newState": null,
+            "batchId": null,
+            "status": "success",
+            "errorMessage": null,
+            "ipAddress": "139.192.83.232",
+            "createdAt": "2025-10-25T12:26:30.625Z"
+        }
+    ],
+    "pagination": {
+        "total": 4,
+        "limit": 500,
+        "offset": 0
+    }
+}
