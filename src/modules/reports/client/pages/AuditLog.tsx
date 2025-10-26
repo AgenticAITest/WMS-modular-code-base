@@ -37,6 +37,7 @@ import {
 import axios from 'axios';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { withModuleAuthorization } from '@client/components/auth/withModuleAuthorization';
 
 interface AuditLog {
   id: string;
@@ -652,4 +653,7 @@ const AuditLog: React.FC = () => {
   );
 };
 
-export default AuditLog;
+export default withModuleAuthorization(AuditLog, {
+  moduleId: 'reports',
+  moduleName: 'Reports'
+});

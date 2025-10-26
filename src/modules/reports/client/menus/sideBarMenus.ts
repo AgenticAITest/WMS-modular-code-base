@@ -7,7 +7,7 @@ import { FileText } from 'lucide-react';
 export const reportsSidebarMenus = {
     id: 'reports',
     title: 'Reports',
-    url: '/console/modules/reports',
+    url: '/console/reports',
 
 //    icon: Puzzle, // TODO: Change to appropriate icon
 //    roles: 'ADMIN', 
@@ -16,7 +16,7 @@ export const reportsSidebarMenus = {
 //      {
 //        id: "reports-list",
 //        title: "Reports List",
-//        url: "/console/modules/reports",
+//        url: "/console/reports",
 //        roles: "ADMIN",
 //        permissions: "reports.view",
 
@@ -27,7 +27,7 @@ export const reportsSidebarMenus = {
       {
         id: "audit-log",
         title: "Audit Log",
-        url: "/console/modules/reports/audit-log",
+        url: "/console/reports/audit-log",
         roles: "ADMIN",
         permissions: "reports.audit-log.view",
 
