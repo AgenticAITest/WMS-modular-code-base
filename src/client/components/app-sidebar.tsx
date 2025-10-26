@@ -155,10 +155,6 @@ const data = {
 
     workflowSidebarMenus,
 
-
-
-
-
     reportsSidebarMenus,
 
 

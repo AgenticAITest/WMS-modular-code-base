@@ -1553,9 +1553,11 @@ router.put('/orders/:id', authorized('ADMIN', 'purchase-order.edit'), async (req
       });
     }
 
+    // Regenerate document if items were updated or PO was approved
+    const shouldRegenerateDocument = items && items.length > 0;
     const isApproved = updateData.status === 'approved' && existingOrder.status !== 'approved';
 
-    if (isApproved) {
+    if (shouldRegenerateDocument || isApproved) {
       try {
         const [completeOrder] = await db
           .select({
@@ -1645,9 +1647,9 @@ router.put('/orders/:id', authorized('ADMIN', 'purchase-order.edit'), async (req
           },
           userId
         );
-        console.log('[PO Document Regenerated on Approval]', id);
+        console.log('[PO Document Regenerated]', id, isApproved ? 'on approval' : 'on edit');
       } catch (docError) {
-        console.error('Error regenerating PO document on approval:', docError);
+        console.error('Error regenerating PO document:', docError);
       }
     }
 
