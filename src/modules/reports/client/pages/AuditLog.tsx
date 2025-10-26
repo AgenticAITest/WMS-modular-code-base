@@ -256,8 +256,9 @@ const AuditLog: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  const getStatusBadgeClass = (status: string) => {
-    switch (status.toLowerCase()) {
+  const getStatusBadgeClass = (status: string | null) => {
+    const statusLower = (status ?? '').toLowerCase();
+    switch (statusLower) {
       case 'success':
         return 'bg-green-50 text-green-800 ring-green-600/20';
       case 'failed':
@@ -502,7 +503,7 @@ const AuditLog: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${getStatusBadgeClass(log.status)}`}>
-                              {log.status}
+                              {log.status || 'N/A'}
                             </span>
                           </TableCell>
                           <TableCell>
@@ -575,7 +576,7 @@ const AuditLog: React.FC = () => {
                   <Label className="text-muted-foreground">Status</Label>
                   <p>
                     <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${getStatusBadgeClass(selectedLog.status)}`}>
-                      {selectedLog.status}
+                      {selectedLog.status || 'N/A'}
                     </span>
                   </p>
                 </div>
