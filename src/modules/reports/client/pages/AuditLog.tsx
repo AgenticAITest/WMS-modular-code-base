@@ -654,7 +654,4 @@ const AuditLog: React.FC = () => {
   );
 };
 
-export default withModuleAuthorization(AuditLog, {
-  moduleId: 'reports',
-  moduleName: 'Reports'
-});
+export default AuditLog;
